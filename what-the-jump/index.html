@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D NinJump Style Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1a1a1a; /* Darker background */
+            font-family: 'Press Start 2P', cursive;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #gameContainer {
+            width: 100%;
+            max-width: 400px; /* Narrower for 2D "portrait" feel */
+            height: 100%;
+            max-height: 700px;
+            position: relative;
+            box-shadow: 0 0 25px rgba(0,0,0,0.6);
+            border: 3px solid #333;
+            border-radius: 10px;
+            background-color: #282c34; /* Game area background */
+            display: flex; /* Ensure canvas is centered if smaller */
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+            background-color: #282c34; /* Match container or different for play area */
+            border-radius: 6px; /* Rounded corners for the canvas itself */
+        }
+        #uiOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        #score {
+            margin-top: 25px;
+            font-size: 28px;
+            text-shadow: 3px 3px #000000;
+            color: #FFD700; /* Gold score */
+        }
+        .screen { /* Common style for start/game over screens */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            pointer-events: auto;
+            z-index: 20;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .screen h1, .screen h2 {
+            font-size: 38px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px #111;
+        }
+        .screen p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .screen button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 22px;
+            padding: 18px 35px;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 6px #333;
+            transition: all 0.1s ease;
+            text-transform: uppercase;
+        }
+        .screen button:active {
+            box-shadow: 0 3px #333;
+            transform: translateY(3px);
+        }
+        #startScreen h1 { color: #39FF14; } /* Neon Green */
+        #startButton { background-color: #39FF14; box-shadow: 0 6px #1c9a0a;}
+        #startButton:active { box-shadow: 0 3px #1c9a0a;}
+
+        #gameOverScreen h2 { color: #FF2D2D; } /* Bright Red */
+        #restartButton { background-color: #00A8F3; box-shadow: 0 6px #006d9e;} /* Bright Blue */
+        #restartButton:active { box-shadow: 0 3px #006d9e;}
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="uiOverlay">
+            <div id="score">Score: 0</div>
+        </div>
+        <div id="startScreen" class="screen">
+            <h1>Wall Climber</h1>
+            <p>Tap or Click to jump between walls. Dodge spikes and don't fall off!</p>
+            <button id="startButton">Play</button>
+        </div>
+        <div id="gameOverScreen" class="screen" style="display: none;">
+            <h2>Game Over!</h2>
+            <p id="finalScore">Your Score: 0</p>
+            <button id="restartButton">Retry</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScoreElement = document.getElementById('finalScore');
+        const restartButton = document.getElementById('restartButton');
+        const startScreen = document.getElementById('startScreen');
+        const startButton = document.getElementById('startButton');
+        const gameContainer = document.getElementById('gameContainer');
+
+        // --- Game Variables ---
+        let score = 0;
+        let gameOver = true;
+        let gameSpeed = 2; // Pixels per frame for downward pull for player & obstacle speed
+        const playerClimbRateOnWallTexture = gameSpeed * 1; // Player's climb speed on wall texture, relative to gameSpeed
+
+        let obstacleSpawnInterval = 90; // Frames (target 60fps, so 1.5 seconds)
+        let obstacleSpawnTimer = 0;
+        
+        let currentWall = 'left'; // Wall player is currently on
+        let jumpOriginWall = null; // Wall player jumped FROM in current segment
+        let jumpDestinationWall = null; // Wall player is jumping TO in current segment
+        
+        let isJumping = false;
+        // let hasUsedMidAirJump = false; // REMOVED - No mid-air jump
+        let jumpProgress = 0; // 0 to 1 for jump animation
+        let jumpStartY = 0; // Y position at the start of the current jump segment
+        const jumpLandGain = 0; // How much higher the player lands after a jump segment
+        const jumpArcHeight = (50 + jumpLandGain) * 0.8; // How high the arc of the jump is
+        let jumpDistanceX = 0; 
+        const horizontalJumpSpeed = 0.06;
+
+        const playerWidth = 30;
+        const playerHeight = 30;
+        let playerX, playerY;
+
+        const wallWidth = 40; 
+        const obstacleSize = 25; 
+        const obstacles = [];
+
+        // --- Tone.js Synths ---
+        let jumpSynth, gameOverSynth, bgSynth, pointSynth; // REMOVED returnJumpSynth
+        let musicLoop;
+
+        // --- Setup Canvas ---
+        function setupCanvas() {
+            const containerWidth = gameContainer.clientWidth;
+            const containerHeight = gameContainer.clientHeight;
+            
+            let canvasWidth = containerWidth * 0.9; 
+            let canvasHeight = containerHeight * 0.95;
+
+            if (canvasWidth / canvasHeight > 2/3.5) { 
+                canvasWidth = canvasHeight * (2/3.5);
+            } else if (canvasWidth / canvasHeight < 2/3.5) { 
+                canvasHeight = canvasWidth / (2/3.5);
+            }
+            
+            canvas.width = Math.min(canvasWidth, containerWidth - 20); 
+            canvas.height =  Math.min(canvasHeight, containerHeight - 20);
+
+            jumpDistanceX = canvas.width - 2 * wallWidth - playerWidth; 
+        }
+
+
+        // --- Initialization ---
+        function init() {
+            setupCanvas(); 
+
+            // Initialize Tone.js
+            jumpSynth = new Tone.Synth({ // Normal jump
+                oscillator: { type: 'triangle8' }, volume: -5,
+                envelope: { attack: 0.005, decay: 0.08, sustain: 0.01, release: 0.1 }
+            }).toDestination();
+            
+            // returnJumpSynth REMOVED
+
+            gameOverSynth = new Tone.Synth({
+                oscillator: { type: 'pulse', width: 0.3 }, volume: -3,
+                envelope: { attack: 0.01, decay: 0.4, sustain: 0, release: 0.3 }
+            }).toDestination();
+            
+            pointSynth = new Tone.Synth({ 
+                oscillator: { type: 'sine' }, volume: -15,
+                envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }
+            }).toDestination();
+
+            bgSynth = new Tone.MembraneSynth({
+                pitchDecay: 0.01, octaves: 3,
+                envelope: { attack: 0.001, decay: 0.3, sustain: 0 }
+            }).toDestination();
+            bgSynth.volume.value = -20;
+
+            musicLoop = new Tone.Loop(time => {
+                bgSynth.triggerAttackRelease('C2', '8n', time);
+                if (Math.random() < 0.5) { 
+                    bgSynth.triggerAttackRelease('G1', '16n', time + Tone.Time('16n').toSeconds());
+                }
+            }, '4n');
+            Tone.Transport.bpm.value = 110;
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            canvas.addEventListener('pointerdown', handleInput);
+            restartButton.addEventListener('click', startGame);
+            startButton.addEventListener('click', () => {
+                Tone.start(); 
+                startGame();
+            });
+        }
+
+        // --- Start Game ---
+        function startGame() {
+            gameOver = false;
+            score = 0;
+            gameSpeed = 2; 
+            obstacleSpawnInterval = 90; 
+            obstacleSpawnTimer = 0;
+            
+            currentWall = 'left'; 
+            playerX = wallWidth; 
+            playerY = canvas.height * 0.65; 
+
+            isJumping = false; 
+            // hasUsedMidAirJump = false; // REMOVED
+            jumpProgress = 0;
+            jumpOriginWall = null; 
+            jumpDestinationWall = null;
+
+
+            obstacles.length = 0; 
+
+            scoreElement.textContent = `Score: ${score}`;
+            gameOverScreen.style.display = 'none';
+            startScreen.style.display = 'none';
+            
+            if (Tone.Transport.state !== 'started') {
+                Tone.Transport.start();
+            }
+            musicLoop.start(0);
+
+            gameLoop();
+        }
+
+        // --- Game Loop ---
+        function gameLoop() {
+            if (gameOver) {
+                musicLoop.stop();
+                return;
+            }
+
+            update();
+            draw();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- Update Game State ---
+        function update() {
+            playerY += gameSpeed; 
+
+            if (isJumping) {
+                jumpProgress += horizontalJumpSpeed; 
+                
+                const originX = (jumpOriginWall === 'left') ? wallWidth : canvas.width - wallWidth - playerWidth;
+                const destinationX = (jumpDestinationWall === 'left') ? wallWidth : canvas.width - wallWidth - playerWidth;
+                
+                playerX = originX + (destinationX - originX) * Math.sin(jumpProgress * Math.PI / 2);
+                playerY = jumpStartY - (Math.sin(jumpProgress * Math.PI) * jumpArcHeight) - (jumpLandGain * jumpProgress);
+
+                if (jumpProgress >= 1) { 
+                    playerX = destinationX; 
+                    playerY = jumpStartY - jumpLandGain; 
+                    
+                    isJumping = false; 
+                    currentWall = jumpDestinationWall; 
+                    jumpOriginWall = null; 
+                    jumpDestinationWall = null;
+                }
+            } else { // Not jumping, player is on a wall
+                playerY -= playerClimbRateOnWallTexture; 
+            }
+
+            // Obstacle spawning
+            obstacleSpawnTimer++;
+            if (obstacleSpawnTimer >= obstacleSpawnInterval) {
+                obstacleSpawnTimer = 0;
+                createObstacle();
+            }
+
+            // Update obstacles (move them down)
+            let scoredThisFrame = false;
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.y += gameSpeed; 
+
+                // Collision detection with obstacles
+                if (
+                    playerX < obs.x + obs.width &&
+                    playerX + playerWidth > obs.x &&
+                    playerY < obs.y + obs.height &&
+                    playerY + playerHeight > obs.y
+                ) {
+                    triggerGameOver();
+                    return; 
+                }
+
+                // Remove obstacles that are off-screen (bottom)
+                if (obs.y > canvas.height) {
+                    obstacles.splice(i, 1);
+                    if (!gameOver && !scoredThisFrame) { 
+                        score++;
+                        scoreElement.textContent = `Score: ${score}`;
+                        pointSynth.triggerAttackRelease("A5", "0.02s"); 
+                        scoredThisFrame = true;
+                    }
+                }
+            }
+            
+            // Game Over if player falls off bottom of screen
+            if (playerY >= canvas.height) { 
+                triggerGameOver();
+                return;
+            }
+            
+            // Increase difficulty
+            if (score > 0 && score % 10 === 0 && scoredThisFrame) { 
+                gameSpeed = Math.min(gameSpeed + 0.1, 5); 
+                obstacleSpawnInterval = Math.max(obstacleSpawnInterval - 3, 45); 
+            }
+        }
+
+        // --- Drawing ---
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#282c34'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Walls
+            ctx.fillStyle = '#555'; 
+            ctx.fillRect(0, 0, wallWidth, canvas.height); 
+            ctx.fillRect(canvas.width - wallWidth, 0, wallWidth, canvas.height); 
+
+            // Draw Player
+            ctx.fillStyle = '#39FF14'; 
+            ctx.fillRect(playerX, playerY, playerWidth, playerHeight);
+            // Simple "eye" for direction
+            ctx.fillStyle = 'black';
+            let eyeLooksRight;
+            if (isJumping) {
+                eyeLooksRight = (jumpDestinationWall === 'right');
+            } else {
+                eyeLooksRight = (currentWall === 'left');
+            }
+            const eyeXOffset = eyeLooksRight ? playerWidth * 0.6 : playerWidth * 0.2;
+            ctx.fillRect(playerX + eyeXOffset, playerY + playerHeight * 0.2, playerWidth*0.2, playerHeight*0.2);
+
+
+            // Draw Obstacles (as spikes/triangles)
+            ctx.fillStyle = '#FF2D2D'; 
+            obstacles.forEach(obs => {
+                ctx.beginPath();
+                if (obs.wall === 'left') {
+                    ctx.moveTo(obs.x, obs.y); 
+                    ctx.lineTo(obs.x, obs.y + obs.height); 
+                    ctx.lineTo(obs.x + obs.width, obs.y + obs.height / 2); 
+                } else { // right wall
+                    ctx.moveTo(obs.x + obs.width, obs.y); 
+                    ctx.lineTo(obs.x + obs.width, obs.y + obs.height); 
+                    ctx.lineTo(obs.x, obs.y + obs.height / 2); 
+                }
+                ctx.closePath();
+                ctx.fill();
+            });
+        }
+        
+        // --- Create Obstacle ---
+        function createObstacle() {
+            const obsHeight = obstacleSize * 1.5; 
+            const obsWidth = obstacleSize; 
+            let obsX, obsWall;
+
+            obsWall = Math.random() < 0.5 ? 'left' : 'right';
+            
+            if (isJumping && jumpDestinationWall === obsWall) {
+                 obsWall = (jumpDestinationWall === 'left') ? 'right' : 'left'; 
+            }
+
+
+            if (obsWall === 'left') {
+                obsX = wallWidth; 
+            } else { 
+                obsX = canvas.width - wallWidth - obsWidth; 
+            }
+
+            const obsY = -obsHeight - Math.random() * 50; 
+            obstacles.push({ x: obsX, y: obsY, width: obsWidth, height: obsHeight, wall: obsWall });
+        }
+
+        // --- Handle Input ---
+        function handleInput(event) {
+            event.preventDefault(); 
+            if (gameOver) return; 
+
+            if (!isJumping) { // Start a new jump from the wall
+                isJumping = true;
+                // hasUsedMidAirJump = false; // REMOVED
+                jumpProgress = 0;
+                jumpStartY = playerY; 
+                jumpOriginWall = currentWall; 
+                jumpDestinationWall = (currentWall === 'left') ? 'right' : 'left';
+                jumpSynth.triggerAttackRelease("C5", "0.05s");
+            } 
+            // else { // Player clicked mid-air - THIS BLOCK IS REMOVED TO DISABLE MID-AIR JUMP
+            //     if (!hasUsedMidAirJump) { 
+            //         hasUsedMidAirJump = true; 
+
+            //         let tempWall = jumpOriginWall;
+            //         jumpOriginWall = jumpDestinationWall;
+            //         jumpDestinationWall = tempWall;
+
+            //         jumpProgress = 1 - jumpProgress; 
+            //         jumpStartY = playerY; 
+                    
+            //         returnJumpSynth.triggerAttackRelease("E5", "0.05s"); 
+            //     }
+            // }
+        }
+        
+        // --- Game Over ---
+        function triggerGameOver() {
+            if (gameOver) return; 
+            gameOver = true;
+            gameOverSynth.triggerAttackRelease("F#2", "0.4s", Tone.now(), 0.8); 
+            finalScoreElement.textContent = `Score: ${score}`;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        // --- Window Resize ---
+        function onWindowResize() {
+            const wasGameOver = gameOver; 
+            const wasJumping = isJumping;
+            // const hadUsedMidAir = hasUsedMidAirJump; // REMOVED
+            const prevJumpOrigin = jumpOriginWall;
+            const prevJumpDestination = jumpDestinationWall;
+            const prevJumpProgress = jumpProgress;
+            const prevPlayerY = playerY; 
+
+            gameOver = true; 
+            
+            setupCanvas(); 
+
+            if (!wasGameOver) { 
+                playerX = (currentWall === 'left') ? wallWidth : canvas.width - wallWidth - playerWidth;
+                if (wasJumping) {
+                    playerY = prevPlayerY / canvas.height * canvas.height; 
+                    jumpStartY = playerY; 
+                    isJumping = true;
+                    // hasUsedMidAirJump = hadUsedMidAir; // REMOVED
+                    jumpOriginWall = prevJumpOrigin;
+                    jumpDestinationWall = prevJumpDestination;
+                    jumpProgress = prevJumpProgress;
+                } else {
+                    playerY = canvas.height * 0.65; 
+                    jumpStartY = playerY; 
+                    isJumping = false;
+                    // hasUsedMidAirJump = false; // REMOVED
+                }
+                gameOver = false; 
+                if (!startScreen.style.display || startScreen.style.display === 'none') { 
+                    gameLoop(); 
+                }
+            } else { 
+                if (startScreen.style.display !== 'none' || gameOverScreen.style.display !== 'none') {
+                    ctx.fillStyle = '#282c34';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#555';
+                    ctx.fillRect(0, 0, wallWidth, canvas.height);
+                    ctx.fillRect(canvas.width - wallWidth, 0, wallWidth, canvas.height);
+                }
+            }
+        }
+
+        // --- Start ---
+        init();
+        // Initial draw for walls on start screen.
+        ctx.fillStyle = '#282c34';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#555';
+        ctx.fillRect(0, 0, wallWidth, canvas.height);
+        ctx.fillRect(canvas.width - wallWidth, 0, wallWidth, canvas.height);
+
+    </script>
+</body>
+</html>
