@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2D NinJump Style Game</title>
+    <title>Vibe Jump</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
@@ -55,6 +55,12 @@
             font-size: 28px;
             text-shadow: 3px 3px #000000;
             color: #FFD700; /* Gold score */
+        }
+        #speedMultiplier {
+            margin-bottom: 25px;
+            font-size: 28px;
+            text-shadow: 3px 3px #000000;
+            color: #0e99da; /* Neon Green speed */
         }
         .screen { /* Common style for start/game over screens */
             position: absolute;
@@ -113,9 +119,10 @@
         <canvas id="gameCanvas"></canvas>
         <div id="uiOverlay">
             <div id="score">Score: 0</div>
+            <div id="speedMultiplier">Speed: 1x</div>
         </div>
         <div id="startScreen" class="screen">
-            <h1>Wall Climber</h1>
+            <h1>Vibe Jump</h1>
             <p>Tap or Click to jump between walls. Dodge spikes and don't fall off!</p>
             <button id="startButton">Play</button>
         </div>
@@ -131,6 +138,7 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
+        const speedMultiplierElement = document.getElementById('speedMultiplier');
         const gameOverScreen = document.getElementById('gameOverScreen');
         const finalScoreElement = document.getElementById('finalScore');
         const restartButton = document.getElementById('restartButton');
@@ -141,21 +149,28 @@
         // --- Game Variables ---
         let score = 0;
         let gameOver = true;
-        let gameSpeed = 2; // Pixels per frame for downward pull for player & obstacle speed
-        const playerClimbRateOnWallTexture = gameSpeed * 1; // Player's climb speed on wall texture, relative to gameSpeed
+        let gameSpeed = 2; 
 
-        let obstacleSpawnInterval = 90; // Frames (target 60fps, so 1.5 seconds)
+        let numberOfJumps = 0;
+        let numGameSpeedIncreases = 0;
+        const jumpsPerSpeedIncrease = 5; 
+        const gameSpeedIncrease = 1.0;
+        const obstacleIntervalDecrease = 3; 
+        const maxGameSpeed = 5;
+        const minObstacleInterval = 45; 
+
+        let obstacleSpawnInterval = 90; 
         let obstacleSpawnTimer = 0;
         
-        let currentWall = 'left'; // Wall player is currently on
-        let jumpOriginWall = null; // Wall player jumped FROM in current segment
-        let jumpDestinationWall = null; // Wall player is jumping TO in current segment
+        let currentWall = 'left'; 
+        let jumpOriginWall = null; 
+        let jumpDestinationWall = null; 
         
         let isJumping = false;
-        let jumpProgress = 0; // 0 to 1 for jump animation
-        let jumpStartY = 0; // Y position at the start of the current jump segment
-        const jumpLandGain = 0; // How much higher the player lands after a jump segment
-        const jumpArcHeight = (50 + jumpLandGain) * 0.8; // How high the arc of the jump is
+        let jumpProgress = 0; 
+        let jumpStartY = 0; 
+        const jumpLandGain = 0; 
+        const jumpArcHeight = (50 + jumpLandGain) * 0.8; 
         let jumpDistanceX = 0; 
         const horizontalJumpSpeed = 0.06;
 
@@ -164,17 +179,21 @@
         let playerX, playerY;
 
         // Animation variables for player
-        let playerFrame = 0; // Current animation frame (0 or 1)
+        let playerFrame = 0; 
         let playerAnimationTimer = 0;
-        const playerAnimationFrameDelay = 10; // Change frame every 10 game ticks
+        const playerAnimationFrameDelay = 10; 
 
         const wallWidth = 40; 
         const obstacleSize = 25; 
         const obstacles = [];
 
         // --- Tone.js Synths ---
-        let jumpSynth, gameOverSynth, bgSynth, pointSynth; 
-        let musicLoop;
+        let jumpSynth; 
+        let gameOverSynth; 
+        let bgSynth; 
+        let pointSynth; 
+        let musicLoop; 
+
 
         // --- Setup Canvas ---
         function setupCanvas() {
@@ -201,50 +220,82 @@
         function init() {
             setupCanvas(); 
 
-            // Initialize Tone.js
-            jumpSynth = new Tone.Synth({ // Normal jump
-                oscillator: { type: 'triangle8' }, volume: -5,
-                envelope: { attack: 0.005, decay: 0.08, sustain: 0.01, release: 0.1 }
-            }).toDestination();
-            
-            gameOverSynth = new Tone.Synth({
-                oscillator: { type: 'pulse', width: 0.3 }, volume: -3,
-                envelope: { attack: 0.01, decay: 0.4, sustain: 0, release: 0.3 }
-            }).toDestination();
-            
-            pointSynth = new Tone.Synth({ 
-                oscillator: { type: 'sine' }, volume: -15,
-                envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }
-            }).toDestination();
+            try {
+                if (typeof Tone !== 'undefined') {
+                    jumpSynth = new Tone.Synth({ 
+                        oscillator: { type: 'triangle8' }, volume: -5,
+                        envelope: { attack: 0.005, decay: 0.08, sustain: 0.01, release: 0.1 }
+                    }).toDestination();
+                    
+                    gameOverSynth = new Tone.Synth({
+                        oscillator: { type: 'pulse', width: 0.3 }, volume: -3,
+                        envelope: { attack: 0.01, decay: 0.4, sustain: 0, release: 0.3 }
+                    }).toDestination();
+                    
+                    pointSynth = new Tone.Synth({ 
+                        oscillator: { type: 'sine' }, volume: -15,
+                        envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 }
+                    }).toDestination();
 
-            bgSynth = new Tone.MembraneSynth({
-                pitchDecay: 0.01, octaves: 3,
-                envelope: { attack: 0.001, decay: 0.3, sustain: 0 }
-            }).toDestination();
-            bgSynth.volume.value = -20;
+                    bgSynth = new Tone.MembraneSynth({
+                        pitchDecay: 0.01, octaves: 3,
+                        envelope: { attack: 0.001, decay: 0.3, sustain: 0 }
+                    }).toDestination();
+                    if (bgSynth && bgSynth.volume) { 
+                       bgSynth.volume.value = -20;
+                    }
 
-            musicLoop = new Tone.Loop(time => {
-                bgSynth.triggerAttackRelease('C2', '8n', time);
-                if (Math.random() < 0.5) { 
-                    bgSynth.triggerAttackRelease('G1', '16n', time + Tone.Time('16n').toSeconds());
+
+                    musicLoop = new Tone.Loop((time) => { // Removed type annotation for 'time'
+                        if (bgSynth && typeof bgSynth.triggerAttackRelease === 'function') { 
+                           bgSynth.triggerAttackRelease('C2', '8n', time);
+                            if (Math.random() < 0.5) { 
+                                bgSynth.triggerAttackRelease('G1', '16n', time + Tone.Time('16n').toSeconds());
+                            }
+                        }
+                    }, '4n');
+                    if (Tone.Transport && Tone.Transport.bpm) { 
+                        Tone.Transport.bpm.value = 110;
+                    }
+                } else {
+                    console.warn("Tone.js library not found. Sound effects will be disabled.");
                 }
-            }, '4n');
-            Tone.Transport.bpm.value = 110;
+            } catch (e) {
+                console.error("Error initializing Tone.js objects:", e);
+            }
+
 
             // Event Listeners
             window.addEventListener('resize', onWindowResize);
             canvas.addEventListener('pointerdown', handleInput);
             restartButton.addEventListener('click', startGame);
+            
             startButton.addEventListener('click', () => {
-                Tone.start(); 
-                startGame();
+                console.log("Start button clicked.");
+                if (typeof Tone !== 'undefined' && typeof Tone.start === 'function') {
+                    Tone.start()
+                        .then(() => {
+                            console.log("Tone.start() successful.");
+                            startGame();
+                        })
+                        .catch((e) => { // Removed type annotation for 'e'
+                            console.error("Tone.start() promise rejected. Game will proceed with potentially no sound.", e);
+                            startGame(); 
+                        });
+                } else {
+                    console.warn("Tone.js or Tone.start not available. Starting game directly.");
+                    startGame(); 
+                }
             });
         }
 
         // --- Start Game ---
         function startGame() {
+            console.log("startGame() called."); 
             gameOver = false;
             score = 0;
+            numberOfJumps = 0;
+            numGameSpeedIncreases = 0; 
             gameSpeed = 2; 
             obstacleSpawnInterval = 90; 
             obstacleSpawnTimer = 0;
@@ -257,20 +308,33 @@
             jumpProgress = 0;
             jumpOriginWall = null; 
             jumpDestinationWall = null;
-            playerFrame = 0; // Reset animation frame
+            playerFrame = 0; 
             playerAnimationTimer = 0;
-
 
             obstacles.length = 0; 
 
             scoreElement.textContent = `Score: ${score}`;
+            speedMultiplierElement.textContent = `Speed: ${numGameSpeedIncreases + 1}x`;
             gameOverScreen.style.display = 'none';
-            startScreen.style.display = 'none';
+            startScreen.style.display = 'none'; 
             
-            if (Tone.Transport.state !== 'started') {
-                Tone.Transport.start();
+            try {
+                if (typeof Tone !== 'undefined' && Tone.Transport && typeof Tone.Transport.start === 'function') {
+                    if (Tone.Transport.state !== 'started') {
+                        Tone.Transport.start();
+                    }
+                } else {
+                    console.warn("Tone.Transport not available for starting in startGame.");
+                }
+
+                if (musicLoop && typeof musicLoop.start === 'function') {
+                     musicLoop.start(0);
+                } else {
+                    console.warn("musicLoop not available for starting in startGame.");
+                }
+            } catch (toneError) {
+                console.error("Error during Tone.js setup in startGame:", toneError);
             }
-            musicLoop.start(0);
 
             gameLoop();
         }
@@ -278,7 +342,7 @@
         // --- Game Loop ---
         function gameLoop() {
             if (gameOver) {
-                musicLoop.stop();
+                if (musicLoop && typeof musicLoop.stop === 'function') musicLoop.stop();
                 return;
             }
 
@@ -309,34 +373,31 @@
                     currentWall = jumpDestinationWall; 
                     jumpOriginWall = null; 
                     jumpDestinationWall = null;
-                    playerFrame = 0; // Reset animation when landing
+                    playerFrame = 0; 
                     playerAnimationTimer = 0;
                 }
-            } else { // Not jumping, player is on a wall
+            } else { 
+                let playerClimbRateOnWallTexture = gameSpeed * 1.0; 
                 playerY -= playerClimbRateOnWallTexture; 
 
-                // Update player animation frame
                 playerAnimationTimer++;
                 if (playerAnimationTimer >= playerAnimationFrameDelay) {
-                    playerFrame = 1 - playerFrame; // Toggle frame (0 to 1, 1 to 0)
+                    playerFrame = 1 - playerFrame; 
                     playerAnimationTimer = 0;
                 }
             }
 
-            // Obstacle spawning
             obstacleSpawnTimer++;
             if (obstacleSpawnTimer >= obstacleSpawnInterval) {
                 obstacleSpawnTimer = 0;
                 createObstacle();
             }
 
-            // Update obstacles (move them down)
-            let scoredThisFrame = false;
+            let scoredThisFrame = false; 
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 const obs = obstacles[i];
                 obs.y += gameSpeed; 
 
-                // Collision detection with obstacles
                 if (
                     playerX < obs.x + obs.width &&
                     playerX + playerWidth > obs.x &&
@@ -347,57 +408,48 @@
                     return; 
                 }
 
-                // Remove obstacles that are off-screen (bottom)
                 if (obs.y > canvas.height) {
                     obstacles.splice(i, 1);
                     if (!gameOver && !scoredThisFrame) { 
                         score++;
                         scoreElement.textContent = `Score: ${score}`;
-                        pointSynth.triggerAttackRelease("A5", "0.02s"); 
+                        if (pointSynth && typeof pointSynth.triggerAttackRelease === 'function') {
+                            pointSynth.triggerAttackRelease("A5", "0.02s"); 
+                        }
                         scoredThisFrame = true;
                     }
                 }
             }
+
             
-            // Game Over if player falls off bottom of screen
+            
             if (playerY >= canvas.height) { 
                 triggerGameOver();
                 return;
-            }
-            
-            // Increase difficulty
-            if (score > 0 && score % 10 === 0 && scoredThisFrame) { 
-                gameSpeed = Math.min(gameSpeed + 0.1, 5); 
-                obstacleSpawnInterval = Math.max(obstacleSpawnInterval - 3, 45); 
             }
         }
 
         // --- Drawing ---
         function draw() {
-            // Clear canvas
             ctx.fillStyle = '#282c34'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Walls
             ctx.fillStyle = '#555'; 
             ctx.fillRect(0, 0, wallWidth, canvas.height); 
             ctx.fillRect(canvas.width - wallWidth, 0, wallWidth, canvas.height); 
 
-            // Draw Player
             ctx.fillStyle = '#39FF14'; 
             let currentFramePlayerWidth = playerWidth;
             let currentFramePlayerHeight = playerHeight;
             let playerDrawY = playerY;
 
             if (!isJumping && playerFrame === 1) {
-                // Animation: make player slightly wider and shorter for "step"
                 currentFramePlayerWidth = playerWidth * 1.1;
                 currentFramePlayerHeight = playerHeight * 0.9;
-                playerDrawY += playerHeight * 0.1; // Adjust Y to keep bottom aligned
+                playerDrawY += playerHeight * 0.1; 
             }
             ctx.fillRect(playerX + (playerWidth - currentFramePlayerWidth)/2 , playerDrawY, currentFramePlayerWidth, currentFramePlayerHeight);
             
-            // Player Eye
             ctx.fillStyle = 'black';
             let eyeLooksRight;
             let eyeXOffsetRatio;
@@ -405,18 +457,15 @@
             if (isJumping) {
                 eyeLooksRight = (jumpDestinationWall === 'right');
             } else {
-                eyeLooksRight = (currentWall === 'left'); // If on left wall, look right (towards open space)
-                // For animation frame 1 on wall, make eye more central or slightly towards movement
-                if (playerFrame === 1) {
-                    eyeLooksRight = (currentWall === 'left'); // Keep looking forward
+                eyeLooksRight = (currentWall === 'left'); 
+                if (playerFrame === 1) { 
+                    eyeLooksRight = (currentWall === 'left'); 
                 }
             }
             
             eyeXOffsetRatio = eyeLooksRight ? 0.6 : 0.2;
             ctx.fillRect(playerX + (playerWidth - currentFramePlayerWidth)/2 + currentFramePlayerWidth * eyeXOffsetRatio, playerDrawY + currentFramePlayerHeight * 0.2, currentFramePlayerWidth * 0.2, currentFramePlayerHeight * 0.2);
 
-
-            // Draw Obstacles (as spikes/triangles)
             ctx.fillStyle = '#FF2D2D'; 
             obstacles.forEach(obs => {
                 ctx.beginPath();
@@ -424,7 +473,7 @@
                     ctx.moveTo(obs.x, obs.y); 
                     ctx.lineTo(obs.x, obs.y + obs.height); 
                     ctx.lineTo(obs.x + obs.width, obs.y + obs.height / 2); 
-                } else { // right wall
+                } else { 
                     ctx.moveTo(obs.x + obs.width, obs.y); 
                     ctx.lineTo(obs.x + obs.width, obs.y + obs.height); 
                     ctx.lineTo(obs.x, obs.y + obs.height / 2); 
@@ -446,7 +495,6 @@
                  obsWall = (jumpDestinationWall === 'left') ? 'right' : 'left'; 
             }
 
-
             if (obsWall === 'left') {
                 obsX = wallWidth; 
             } else { 
@@ -458,19 +506,30 @@
         }
 
         // --- Handle Input ---
-        function handleInput(event) {
+        function handleInput(event) { // Removed PointerEvent type
             event.preventDefault(); 
             if (gameOver) return; 
 
-            if (!isJumping) { // Start a new jump from the wall
+            if (!isJumping) { 
                 isJumping = true;
-                playerFrame = 0; // Ensure player is in default frame when jumping
+                playerFrame = 0; 
                 playerAnimationTimer = 0;
                 jumpProgress = 0;
                 jumpStartY = playerY; 
                 jumpOriginWall = currentWall; 
                 jumpDestinationWall = (currentWall === 'left') ? 'right' : 'left';
-                jumpSynth.triggerAttackRelease("C5", "0.05s");
+                if (jumpSynth && typeof jumpSynth.triggerAttackRelease === 'function') {
+                    jumpSynth.triggerAttackRelease("C5", "0.05s");
+                }
+
+                numberOfJumps++; 
+
+                if (numberOfJumps > 0 && numberOfJumps % jumpsPerSpeedIncrease === 0) {
+                    gameSpeed = Math.min(gameSpeed + gameSpeedIncrease, maxGameSpeed);
+                    obstacleSpawnInterval = Math.max(obstacleSpawnInterval - obstacleIntervalDecrease, minObstacleInterval);
+                    numGameSpeedIncreases++;
+                    speedMultiplierElement.textContent = `Speed: ${numGameSpeedIncreases + 1}x`;
+                }
             } 
         }
         
@@ -478,8 +537,10 @@
         function triggerGameOver() {
             if (gameOver) return; 
             gameOver = true;
-            gameOverSynth.triggerAttackRelease("F#2", "0.4s", Tone.now(), 0.8); 
-            finalScoreElement.textContent = `Score: ${score}`;
+            if (gameOverSynth && typeof gameOverSynth.triggerAttackRelease === 'function') {
+                gameOverSynth.triggerAttackRelease("F#2", "0.4s", Tone.now(), 0.8); 
+            }
+            finalScoreElement.textContent = `Score: ${score}`; 
             gameOverScreen.style.display = 'flex';
         }
 
@@ -493,7 +554,7 @@
             const prevPlayerY = playerY; 
             const prevPlayerFrame = playerFrame;
             const prevAnimationTimer = playerAnimationTimer;
-
+            const prevNumJumps = numberOfJumps; 
 
             gameOver = true; 
             
@@ -515,6 +576,7 @@
                 }
                 playerFrame = prevPlayerFrame;
                 playerAnimationTimer = prevAnimationTimer;
+                numberOfJumps = prevNumJumps; 
                 gameOver = false; 
                 if (!startScreen.style.display || startScreen.style.display === 'none') { 
                     gameLoop(); 
