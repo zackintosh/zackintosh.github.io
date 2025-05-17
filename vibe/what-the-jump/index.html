@@ -152,7 +152,6 @@
         let jumpDestinationWall = null; // Wall player is jumping TO in current segment
         
         let isJumping = false;
-        // let hasUsedMidAirJump = false; // REMOVED - No mid-air jump
         let jumpProgress = 0; // 0 to 1 for jump animation
         let jumpStartY = 0; // Y position at the start of the current jump segment
         const jumpLandGain = 0; // How much higher the player lands after a jump segment
@@ -164,12 +163,17 @@
         const playerHeight = 30;
         let playerX, playerY;
 
+        // Animation variables for player
+        let playerFrame = 0; // Current animation frame (0 or 1)
+        let playerAnimationTimer = 0;
+        const playerAnimationFrameDelay = 10; // Change frame every 10 game ticks
+
         const wallWidth = 40; 
         const obstacleSize = 25; 
         const obstacles = [];
 
         // --- Tone.js Synths ---
-        let jumpSynth, gameOverSynth, bgSynth, pointSynth; // REMOVED returnJumpSynth
+        let jumpSynth, gameOverSynth, bgSynth, pointSynth; 
         let musicLoop;
 
         // --- Setup Canvas ---
@@ -203,8 +207,6 @@
                 envelope: { attack: 0.005, decay: 0.08, sustain: 0.01, release: 0.1 }
             }).toDestination();
             
-            // returnJumpSynth REMOVED
-
             gameOverSynth = new Tone.Synth({
                 oscillator: { type: 'pulse', width: 0.3 }, volume: -3,
                 envelope: { attack: 0.01, decay: 0.4, sustain: 0, release: 0.3 }
@@ -252,10 +254,11 @@
             playerY = canvas.height * 0.65; 
 
             isJumping = false; 
-            // hasUsedMidAirJump = false; // REMOVED
             jumpProgress = 0;
             jumpOriginWall = null; 
             jumpDestinationWall = null;
+            playerFrame = 0; // Reset animation frame
+            playerAnimationTimer = 0;
 
 
             obstacles.length = 0; 
@@ -306,9 +309,18 @@
                     currentWall = jumpDestinationWall; 
                     jumpOriginWall = null; 
                     jumpDestinationWall = null;
+                    playerFrame = 0; // Reset animation when landing
+                    playerAnimationTimer = 0;
                 }
             } else { // Not jumping, player is on a wall
                 playerY -= playerClimbRateOnWallTexture; 
+
+                // Update player animation frame
+                playerAnimationTimer++;
+                if (playerAnimationTimer >= playerAnimationFrameDelay) {
+                    playerFrame = 1 - playerFrame; // Toggle frame (0 to 1, 1 to 0)
+                    playerAnimationTimer = 0;
+                }
             }
 
             // Obstacle spawning
@@ -373,17 +385,35 @@
 
             // Draw Player
             ctx.fillStyle = '#39FF14'; 
-            ctx.fillRect(playerX, playerY, playerWidth, playerHeight);
-            // Simple "eye" for direction
+            let currentFramePlayerWidth = playerWidth;
+            let currentFramePlayerHeight = playerHeight;
+            let playerDrawY = playerY;
+
+            if (!isJumping && playerFrame === 1) {
+                // Animation: make player slightly wider and shorter for "step"
+                currentFramePlayerWidth = playerWidth * 1.1;
+                currentFramePlayerHeight = playerHeight * 0.9;
+                playerDrawY += playerHeight * 0.1; // Adjust Y to keep bottom aligned
+            }
+            ctx.fillRect(playerX + (playerWidth - currentFramePlayerWidth)/2 , playerDrawY, currentFramePlayerWidth, currentFramePlayerHeight);
+            
+            // Player Eye
             ctx.fillStyle = 'black';
             let eyeLooksRight;
+            let eyeXOffsetRatio;
+
             if (isJumping) {
                 eyeLooksRight = (jumpDestinationWall === 'right');
             } else {
-                eyeLooksRight = (currentWall === 'left');
+                eyeLooksRight = (currentWall === 'left'); // If on left wall, look right (towards open space)
+                // For animation frame 1 on wall, make eye more central or slightly towards movement
+                if (playerFrame === 1) {
+                    eyeLooksRight = (currentWall === 'left'); // Keep looking forward
+                }
             }
-            const eyeXOffset = eyeLooksRight ? playerWidth * 0.6 : playerWidth * 0.2;
-            ctx.fillRect(playerX + eyeXOffset, playerY + playerHeight * 0.2, playerWidth*0.2, playerHeight*0.2);
+            
+            eyeXOffsetRatio = eyeLooksRight ? 0.6 : 0.2;
+            ctx.fillRect(playerX + (playerWidth - currentFramePlayerWidth)/2 + currentFramePlayerWidth * eyeXOffsetRatio, playerDrawY + currentFramePlayerHeight * 0.2, currentFramePlayerWidth * 0.2, currentFramePlayerHeight * 0.2);
 
 
             // Draw Obstacles (as spikes/triangles)
@@ -434,27 +464,14 @@
 
             if (!isJumping) { // Start a new jump from the wall
                 isJumping = true;
-                // hasUsedMidAirJump = false; // REMOVED
+                playerFrame = 0; // Ensure player is in default frame when jumping
+                playerAnimationTimer = 0;
                 jumpProgress = 0;
                 jumpStartY = playerY; 
                 jumpOriginWall = currentWall; 
                 jumpDestinationWall = (currentWall === 'left') ? 'right' : 'left';
                 jumpSynth.triggerAttackRelease("C5", "0.05s");
             } 
-            // else { // Player clicked mid-air - THIS BLOCK IS REMOVED TO DISABLE MID-AIR JUMP
-            //     if (!hasUsedMidAirJump) { 
-            //         hasUsedMidAirJump = true; 
-
-            //         let tempWall = jumpOriginWall;
-            //         jumpOriginWall = jumpDestinationWall;
-            //         jumpDestinationWall = tempWall;
-
-            //         jumpProgress = 1 - jumpProgress; 
-            //         jumpStartY = playerY; 
-                    
-            //         returnJumpSynth.triggerAttackRelease("E5", "0.05s"); 
-            //     }
-            // }
         }
         
         // --- Game Over ---
@@ -470,11 +487,13 @@
         function onWindowResize() {
             const wasGameOver = gameOver; 
             const wasJumping = isJumping;
-            // const hadUsedMidAir = hasUsedMidAirJump; // REMOVED
             const prevJumpOrigin = jumpOriginWall;
             const prevJumpDestination = jumpDestinationWall;
             const prevJumpProgress = jumpProgress;
             const prevPlayerY = playerY; 
+            const prevPlayerFrame = playerFrame;
+            const prevAnimationTimer = playerAnimationTimer;
+
 
             gameOver = true; 
             
@@ -486,7 +505,6 @@
                     playerY = prevPlayerY / canvas.height * canvas.height; 
                     jumpStartY = playerY; 
                     isJumping = true;
-                    // hasUsedMidAirJump = hadUsedMidAir; // REMOVED
                     jumpOriginWall = prevJumpOrigin;
                     jumpDestinationWall = prevJumpDestination;
                     jumpProgress = prevJumpProgress;
@@ -494,8 +512,9 @@
                     playerY = canvas.height * 0.65; 
                     jumpStartY = playerY; 
                     isJumping = false;
-                    // hasUsedMidAirJump = false; // REMOVED
                 }
+                playerFrame = prevPlayerFrame;
+                playerAnimationTimer = prevAnimationTimer;
                 gameOver = false; 
                 if (!startScreen.style.display || startScreen.style.display === 'none') { 
                     gameLoop(); 
