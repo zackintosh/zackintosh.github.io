@@ -396,8 +396,26 @@
             let scoredThisFrame = false; 
             for (let i = obstacles.length - 1; i >= 0; i--) {
                 const obs = obstacles[i];
-                obs.y += gameSpeed; 
 
+                if (obs.type === 'jumper') {
+                    obs.y += gameSpeed + obs.speedY; // Jumper's vertical speed
+                    obs.x += obs.speedX; // Jumper's horizontal speed
+
+                    // Wall bouncing logic for jumpers
+                    if (obs.x <= wallWidth) {
+                        obs.x = wallWidth;
+                        obs.speedX *= -1;
+                        obs.wall = 'left';
+                    } else if (obs.x + obs.width >= canvas.width - wallWidth) {
+                        obs.x = canvas.width - wallWidth - obs.width;
+                        obs.speedX *= -1;
+                        obs.wall = 'right';
+                    }
+                } else { // 'spike' or any other unspecified type
+                    obs.y += gameSpeed; // Spikes fall with the general gameSpeed
+                }
+
+                // Common logic for all obstacles: collision detection
                 if (
                     playerX < obs.x + obs.width &&
                     playerX + playerWidth > obs.x &&
@@ -466,43 +484,76 @@
             eyeXOffsetRatio = eyeLooksRight ? 0.6 : 0.2;
             ctx.fillRect(playerX + (playerWidth - currentFramePlayerWidth)/2 + currentFramePlayerWidth * eyeXOffsetRatio, playerDrawY + currentFramePlayerHeight * 0.2, currentFramePlayerWidth * 0.2, currentFramePlayerHeight * 0.2);
 
-            ctx.fillStyle = '#FF2D2D'; 
             obstacles.forEach(obs => {
-                ctx.beginPath();
-                if (obs.wall === 'left') {
-                    ctx.moveTo(obs.x, obs.y); 
-                    ctx.lineTo(obs.x, obs.y + obs.height); 
-                    ctx.lineTo(obs.x + obs.width, obs.y + obs.height / 2); 
-                } else { 
-                    ctx.moveTo(obs.x + obs.width, obs.y); 
-                    ctx.lineTo(obs.x + obs.width, obs.y + obs.height); 
-                    ctx.lineTo(obs.x, obs.y + obs.height / 2); 
+                if (obs.type === 'jumper') {
+                    ctx.fillStyle = '#0077FF'; // Blue for jumpers
+                    ctx.beginPath();
+                    ctx.arc(obs.x + obs.width / 2, obs.y + obs.height / 2, obs.width / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else { // Default to spike drawing (red triangles)
+                    ctx.fillStyle = '#FF2D2D'; // Bright Red for spikes
+                    ctx.beginPath();
+                    if (obs.wall === 'left') {
+                        ctx.moveTo(obs.x, obs.y);
+                        ctx.lineTo(obs.x, obs.y + obs.height);
+                        ctx.lineTo(obs.x + obs.width, obs.y + obs.height / 2);
+                    } else { // right wall
+                        ctx.moveTo(obs.x + obs.width, obs.y);
+                        ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+                        ctx.lineTo(obs.x, obs.y + obs.height / 2);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
                 }
-                ctx.closePath();
-                ctx.fill();
             });
         }
         
         // --- Create Obstacle ---
         function createObstacle() {
-            const obsHeight = obstacleSize * 1.5; 
-            const obsWidth = obstacleSize; 
-            let obsX, obsWall;
+            let obsX, obsWall, obsWidth, obsHeight, obsType, speedX = 0, speedY = 0;
 
             obsWall = Math.random() < 0.5 ? 'left' : 'right';
-            
+
+            // Avoid spawning on the wall the player is jumping towards
             if (isJumping && jumpDestinationWall === obsWall) {
-                 obsWall = (jumpDestinationWall === 'left') ? 'right' : 'left'; 
+                 obsWall = (jumpDestinationWall === 'left') ? 'right' : 'left';
             }
 
-            if (obsWall === 'left') {
-                obsX = wallWidth; 
-            } else { 
-                obsX = canvas.width - wallWidth - obsWidth; 
+            if (Math.random() < 0.3) { // 30% chance for a 'jumper'
+                obsType = 'jumper';
+                obsWidth = obstacleSize * 0.8;
+                obsHeight = obstacleSize * 0.8;
+                if (obsWall === 'left') {
+                    obsX = wallWidth;
+                    speedX = (Math.random() * 1 + 1); // Positive speedX (1 to 2)
+                } else {
+                    obsX = canvas.width - wallWidth - obsWidth;
+                    speedX = -(Math.random() * 1 + 1); // Negative speedX (-1 to -2)
+                }
+                speedY = gameSpeed * 0.2; // Slight downward speed
+            } else {
+                obsType = 'spike';
+                obsHeight = obstacleSize * 1.5;
+                obsWidth = obstacleSize;
+                if (obsWall === 'left') {
+                    obsX = wallWidth;
+                } else {
+                    obsX = canvas.width - wallWidth - obsWidth;
+                }
+                // speedX and speedY remain 0 for spikes
             }
 
-            const obsY = -obsHeight - Math.random() * 50; 
-            obstacles.push({ x: obsX, y: obsY, width: obsWidth, height: obsHeight, wall: obsWall });
+            const obsY = -obsHeight - Math.random() * 50;
+            obstacles.push({
+                x: obsX,
+                y: obsY,
+                width: obsWidth,
+                height: obsHeight,
+                wall: obsWall,
+                type: obsType,
+                speedX: speedX,
+                speedY: speedY
+            });
         }
 
         // --- Handle Input ---
