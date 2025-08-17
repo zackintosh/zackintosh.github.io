@@ -9,6 +9,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="House Tracker">
+    
+    <!-- iOS Safari theme support -->
+    <meta name="theme-color" content="#667eea" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1a1a2e" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" media="(prefers-color-scheme: light)">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" media="(prefers-color-scheme: dark)">
     <style>
        * {
             margin: 0;
@@ -16,12 +22,24 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --light-bg-start: #667eea;
+            --light-bg-end: #764ba2;
+            --dark-bg-start: #1a1a2e;
+            --dark-bg-end: #16213e;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--light-bg-start) 0%, var(--light-bg-end) 100%);
             min-height: 100vh;
+            /* iOS Safari safe area support */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
         }
 
         .container {
@@ -710,7 +728,7 @@
         }
 
         .theme-light body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--light-bg-start) 0%, var(--light-bg-end) 100%);
         }
 
         .theme-light .container {
@@ -774,7 +792,7 @@
         }
 
         .theme-dark body {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: linear-gradient(135deg, var(--dark-bg-start) 0%, var(--dark-bg-end) 100%);
         }
 
         .theme-dark .container {
@@ -977,7 +995,7 @@
         @media (prefers-color-scheme: dark) {
             /* Only apply when no manual theme is selected */
             :root:not(.theme-light):not(.theme-dark) body {
-                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                background: linear-gradient(135deg, var(--dark-bg-start) 0%, var(--dark-bg-end) 100%);
             }
 
             :root:not(.theme-light):not(.theme-dark) .container {
