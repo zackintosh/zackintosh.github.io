@@ -130,6 +130,99 @@
             background: #e9ecef;
         }
 
+        /* Mobile Navigation */
+        .mobile-nav {
+            display: none;
+            position: relative;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            padding: 15px;
+        }
+
+        .hamburger-btn {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 30px;
+            height: 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .hamburger-btn span {
+            width: 100%;
+            height: 3px;
+            background: #666;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        /* Dark theme hamburger */
+        .theme-dark .hamburger-btn span {
+            background: var(--text-secondary);
+        }
+
+        .hamburger-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(6px, 6px);
+        }
+
+        .hamburger-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(6px, -6px);
+        }
+
+        .mobile-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .mobile-menu.show {
+            display: block;
+        }
+
+        .mobile-tab {
+            display: block;
+            width: 100%;
+            padding: 15px 20px;
+            text-align: left;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .mobile-tab:last-child {
+            border-bottom: none;
+        }
+
+        .mobile-tab.active {
+            background: #f8f9fa;
+            color: #2c3e50;
+            border-left: 3px solid #3498db;
+        }
+
+        .mobile-tab:hover {
+            background: #f0f0f0;
+        }
+
         .tab-content {
             display: none;
             padding: 20px;
@@ -629,6 +722,34 @@
             background: #404040;
         }
 
+        .theme-dark .mobile-nav {
+            background: var(--bg-secondary);
+            border-bottom-color: var(--border-color);
+        }
+
+        .theme-dark .hamburger-btn span {
+            background: var(--text-secondary);
+        }
+
+        .theme-dark .mobile-menu {
+            background: var(--bg-card);
+            border-color: var(--border-color);
+        }
+
+        .theme-dark .mobile-tab {
+            color: var(--text-secondary);
+            border-bottom-color: var(--border-color);
+        }
+
+        .theme-dark .mobile-tab.active {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .theme-dark .mobile-tab:hover {
+            background: #404040;
+        }
+
         .theme-dark .criteria-section,
         .theme-dark .house-form,
         .theme-dark .house-card {
@@ -789,6 +910,34 @@
                 border-color: #404040;
                 color: #e0e0e0;
             }
+
+            :root:not(.theme-light):not(.theme-dark) .mobile-nav {
+                background: #2a2a2a;
+                border-bottom-color: #404040;
+            }
+
+            :root:not(.theme-light):not(.theme-dark) .hamburger-btn span {
+                background: #b0b0b0;
+            }
+
+            :root:not(.theme-light):not(.theme-dark) .mobile-menu {
+                background: #1a1a1a;
+                border-color: #404040;
+            }
+
+            :root:not(.theme-light):not(.theme-dark) .mobile-tab {
+                color: #b0b0b0;
+                border-bottom-color: #404040;
+            }
+
+            :root:not(.theme-light):not(.theme-dark) .mobile-tab.active {
+                background: #2a2a2a;
+                color: #ffffff;
+            }
+
+            :root:not(.theme-light):not(.theme-dark) .mobile-tab:hover {
+                background: #404040;
+            }
         }
 
         /* ------------------ Responsive ------------------ */
@@ -803,21 +952,20 @@
                 text-align: center;
             }
 
+            .desktop-tabs {
+                display: none;
+            }
+
+            .mobile-nav {
+                display: block;
+            }
+
             .form-row {
                 grid-template-columns: 1fr !important;
             }
 
             .checkbox-grid {
                 grid-template-columns: 1fr !important;
-            }
-
-            .tabs {
-                flex-direction: column;
-            }
-
-            .tab {
-                padding: 15px;
-                font-size: 14px;
             }
 
             .filters {
@@ -876,10 +1024,25 @@
             </div>
         </div>
         
-        <div class="tabs">
+        <!-- Desktop Tabs -->
+        <div class="tabs desktop-tabs">
             <button class="tab active" onclick="showTab('criteria')">🎯 Set Criteria</button>
             <button class="tab" onclick="showTab('houses')">🏠 Add Houses</button>
             <button class="tab" onclick="showTab('compare')">📊 Compare Houses</button>
+        </div>
+
+        <!-- Mobile Hamburger Menu -->
+        <div class="mobile-nav">
+            <button class="hamburger-btn" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="mobile-menu" id="mobileMenu">
+                <button class="mobile-tab active" onclick="showTab('criteria'); closeMobileMenu();">🎯 Set Criteria</button>
+                <button class="mobile-tab" onclick="showTab('houses'); closeMobileMenu();">🏠 Add Houses</button>
+                <button class="mobile-tab" onclick="showTab('compare'); closeMobileMenu();">📊 Compare Houses</button>
+            </div>
         </div>
 
         <!-- Criteria Tab -->
@@ -1012,9 +1175,13 @@
 
         // Tab functionality
         function showTab(tabName) {
-            // Update tab buttons
+            // Update desktop tab buttons
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            event.target.classList.add('active');
+            document.querySelectorAll('.mobile-tab').forEach(tab => tab.classList.remove('active'));
+            
+            // Find and activate the clicked tab (either desktop or mobile)
+            const clickedTab = event.target;
+            clickedTab.classList.add('active');
             
             // Update tab content
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -1029,6 +1196,34 @@
                 renderHouses();
             }
         }
+
+        // Mobile menu functionality
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const btn = document.querySelector('.hamburger-btn');
+            
+            menu.classList.toggle('show');
+            btn.classList.toggle('active');
+        }
+
+        function closeMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const btn = document.querySelector('.hamburger-btn');
+            
+            menu.classList.remove('show');
+            btn.classList.remove('active');
+        }
+
+        // Close mobile menu when clicking outside
+        document.addEventListener('click', function(e) {
+            const mobileNav = document.querySelector('.mobile-nav');
+            const menu = document.getElementById('mobileMenu');
+            const btn = document.querySelector('.hamburger-btn');
+            
+            if (!mobileNav.contains(e.target) && menu.classList.contains('show')) {
+                closeMobileMenu();
+            }
+        });
 
         // Render criteria lists
         function renderCriteria() {
