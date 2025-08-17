@@ -11,14 +11,15 @@
     <meta name="apple-mobile-web-app-title" content="House Tracker">
     
     <!-- iOS Safari theme support -->
-    <meta name="theme-color" content="#667eea" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#1a1a2e" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f8f9fa" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#2a2a2a" media="(prefers-color-scheme: dark)">
     <meta name="apple-mobile-web-app-status-bar-style" content="default" media="(prefers-color-scheme: light)">
     <meta name="apple-mobile-web-app-status-bar-style" content="black" media="(prefers-color-scheme: dark)">
     
     <!-- Safari UI theme support -->
     <meta name="color-scheme" content="light dark">
-    <meta name="supported-color-schemes" content="light dark">
+    <meta name="supported-color-scheme" content="light dark">
+    <meta name="viewport-fit" content="cover">
     <style>
                html {
             color-scheme: light dark;
@@ -1491,6 +1492,70 @@
             }
         });
 
+        // Dynamic theme color based on scroll position
+        function updateThemeColor() {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const headerHeight = document.querySelector('.header').offsetHeight;
+            const tabsHeight = document.querySelector('.tabs').offsetHeight;
+            const navHeight = headerHeight + tabsHeight;
+            
+            // Get the element at the top of the viewport
+            const elementAtTop = document.elementFromPoint(window.innerWidth / 2, 10);
+            
+            if (scrollTop < headerHeight) {
+                // In header area - use header gradient
+                updateMetaThemeColor('#2c3e50');
+            } else if (scrollTop < navHeight) {
+                // In tabs area - use tabs background
+                updateMetaThemeColor('#f8f9fa');
+            } else if (elementAtTop) {
+                // Below navigation - use the background color of the element at top
+                const computedStyle = window.getComputedStyle(elementAtTop);
+                const backgroundColor = computedStyle.backgroundColor;
+                
+                // Convert rgba to hex for theme-color
+                if (backgroundColor.startsWith('rgba')) {
+                    const rgb = backgroundColor.match(/\d+/g);
+                    if (rgb && rgb.length >= 3) {
+                        const hex = '#' + rgb.slice(0, 3).map(x => {
+                            const hex = parseInt(x).toString(16);
+                            return hex.length === 1 ? '0' + hex : hex;
+                        }).join('');
+                        updateMetaThemeColor(hex);
+                    }
+                } else if (backgroundColor.startsWith('rgb')) {
+                    const rgb = backgroundColor.match(/\d+/g);
+                    if (rgb && rgb.length >= 3) {
+                        const hex = '#' + rgb.slice(0, 3).map(x => {
+                            const hex = parseInt(x).toString(16);
+                            return hex.length === 1 ? '0' + hex : hex;
+                        }).join('');
+                        updateMetaThemeColor(hex);
+                    }
+                } else if (backgroundColor.startsWith('#')) {
+                    updateMetaThemeColor(backgroundColor);
+                }
+            }
+        }
+
+        function updateMetaThemeColor(color) {
+            // Update the theme-color meta tag
+            let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+            if (!metaThemeColor) {
+                metaThemeColor = document.createElement('meta');
+                metaThemeColor.name = 'theme-color';
+                document.head.appendChild(metaThemeColor);
+            }
+            metaThemeColor.content = color;
+        }
+
+        // Add scroll listener for dynamic theme color
+        window.addEventListener('scroll', updateThemeColor);
+        window.addEventListener('resize', updateThemeColor);
+        
+        // Initial theme color update
+        document.addEventListener('DOMContentLoaded', updateThemeColor);
+
         // Reset all data
         function resetAllData() {
             if (confirm('⚠️ WARNING: This will permanently delete ALL your data!\n\nThis includes:\n• All criteria (must-haves, nice-to-haves, deal breakers)\n• All houses you\'ve added\n• All your preferences\n\nAre you absolutely sure you want to continue?')) {
@@ -1839,6 +1904,9 @@
             
             // Update dropdown selection
             document.getElementById('themeSelect').value = theme;
+            
+            // Update dynamic theme color after theme change
+            setTimeout(updateThemeColor, 100);
         }
 
         function loadTheme() {
