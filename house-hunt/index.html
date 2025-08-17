@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Hunting Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 20px;
+            text-align: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: white;
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+        }
+
+        .tab:hover:not(.active) {
+            background: #e9ecef;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+            min-height: 70vh;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .criteria-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e9ecef;
+        }
+
+        .criteria-section h3 {
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .must-have h3 { border-bottom-color: #27ae60; color: #27ae60; }
+        .nice-to-have h3 { border-bottom-color: #f39c12; color: #f39c12; }
+        .no-go h3 { border-bottom-color: #e74c3c; color: #e74c3c; }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .feature-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .feature-item span {
+            flex: 1;
+        }
+
+        .delete-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s ease;
+        }
+
+        .delete-btn:hover {
+            background: #c0392b;
+        }
+
+        .add-feature-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .add-feature-form input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .add-feature-form input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #219a52);
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .house-form {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e9ecef;
+        }
+
+        .house-form h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .checkbox-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .checkbox-section h4 {
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            text-align: center;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .must-have-section h4 { background: #e8f5e8; color: #27ae60; }
+        .nice-to-have-section h4 { background: #fff3cd; color: #f39c12; }
+        .no-go-section h4 { background: #f8d7da; color: #e74c3c; }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            font-weight: normal;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .house-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .house-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .house-card.expanded {
+            cursor: default;
+        }
+
+        .house-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .house-title {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .house-price {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #27ae60;
+        }
+
+        .features-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .feature-category {
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .must-have-bg { background: #e8f5e8; }
+        .nice-to-have-bg { background: #fff3cd; }
+        .no-go-bg { background: #f8d7da; }
+
+        .feature-category h4 {
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .feature-count {
+            font-size: 1.5em;
+            font-weight: 700;
+        }
+
+        .score-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.1em;
+            box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-group select, .filter-group input {
+            padding: 8px;
+            border: 2px solid #e1e8ed;
+            border-radius: 6px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #7f8c8d;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+
+        .feature-details {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #ecf0f1;
+            display: none;
+        }
+
+        .feature-details.show {
+            display: block;
+        }
+
+        .feature-details h5 {
+            margin-bottom: 10px;
+            font-size: 1em;
+            font-weight: 600;
+        }
+
+        .feature-details .must-have-details h5 { color: #27ae60; }
+        .feature-details .nice-to-have-details h5 { color: #f39c12; }
+        .feature-details .no-go-details h5 { color: #e74c3c; }
+
+        .feature-list-detail {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .feature-tag {
+            background: #f8f9fa;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            border: 1px solid #e9ecef;
+        }
+
+        .feature-tag.must-have { background: #e8f5e8; border-color: #27ae60; color: #27ae60; }
+        .feature-tag.nice-to-have { background: #fff3cd; border-color: #f39c12; color: #f39c12; }
+        .feature-tag.no-go { background: #f8d7da; border-color: #e74c3c; color: #e74c3c; }
+
+        .expand-hint {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(52, 152, 219, 0.1);
+            color: #3498db;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .checkbox-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏡 House Hunting Tracker</h1>
+            <p>Set your criteria first, then rate houses with simple checkboxes</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('criteria')">🎯 Set Criteria</button>
+            <button class="tab" onclick="showTab('houses')">🏠 Add Houses</button>
+            <button class="tab" onclick="showTab('compare')">📊 Compare Houses</button>
+        </div>
+
+        <!-- Criteria Tab -->
+        <div id="criteria" class="tab-content active">
+            <div class="criteria-section must-have">
+                <h3>✅ Must Haves (Deal makers - without these, you won't buy)</h3>
+                <div class="feature-list" id="mustHaveList"></div>
+                <div class="add-feature-form">
+                    <input type="text" id="mustHaveInput" placeholder="Add a must-have feature...">
+                    <button class="btn btn-success" onclick="addFeature('mustHave')">Add</button>
+                </div>
+            </div>
+
+            <div class="criteria-section nice-to-have">
+                <h3>👍 Nice to Haves (Would be great but not essential)</h3>
+                <div class="feature-list" id="niceToHaveList"></div>
+                <div class="add-feature-form">
+                    <input type="text" id="niceToHaveInput" placeholder="Add a nice-to-have feature...">
+                    <button class="btn" onclick="addFeature('niceToHave')">Add</button>
+                </div>
+            </div>
+
+            <div class="criteria-section no-go">
+                <h3>❌ Deal Breakers (Absolute no-gos)</h3>
+                <div class="feature-list" id="noGoList"></div>
+                <div class="add-feature-form">
+                    <input type="text" id="noGoInput" placeholder="Add a deal breaker...">
+                    <button class="btn btn-danger" onclick="addFeature('noGo')">Add</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Houses Tab -->
+        <div id="houses" class="tab-content">
+            <div class="house-form">
+                <h3>Add New House</h3>
+                <form id="houseForm" onsubmit="saveHouse(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="address">Address *</label>
+                            <input type="text" id="address" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="price">Price</label>
+                            <input type="text" id="price" placeholder="500000" oninput="formatPrice(this)">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notes">Notes</label>
+                        <textarea id="notes" rows="3" placeholder="General observations, pros/cons, etc."></textarea>
+                    </div>
+
+                    <div class="checkbox-grid" id="checkboxContainer">
+                        <!-- Checkboxes will be generated here -->
+                    </div>
+
+                    <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 20px; font-size: 16px;">Save House</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Compare Tab -->
+        <div id="compare" class="tab-content">
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="sortBy">Sort by:</label>
+                    <select id="sortBy" onchange="renderHouses()">
+                        <option value="score">Score (High to Low)</option>
+                        <option value="address">Address</option>
+                        <option value="price">Price</option>
+                        <option value="date">Date Added</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="minScore">Min Score:</label>
+                    <input type="number" id="minScore" value="0" onchange="renderHouses()" style="width: 80px;">
+                </div>
+            </div>
+
+            <div id="housesContainer">
+                <div class="empty-state">
+                    <h3>No houses added yet</h3>
+                    <p>Go to the "Add Houses" tab to start rating properties!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data structure
+        let criteria = {
+            mustHave: [],
+            niceToHave: [],
+            noGo: []
+        };
+        let houses = [];
+
+        // Load data from localStorage
+        function loadData() {
+            const savedCriteria = localStorage.getItem('houseCriteria');
+            const savedHouses = localStorage.getItem('housesList');
+            
+            if (savedCriteria) {
+                criteria = JSON.parse(savedCriteria);
+            } else {
+                // Set default criteria
+                criteria = {
+                    mustHave: ['Good neighborhood', 'Close Move-in ready', 'Garage/Carport', 'AC/Evaporative cooling'],
+                    niceToHave: ['Electric Appliances', '2 baths', 'Updated kitchen', 'Hardwood floors', 'Open floor plan', 'Backyard', 'Good natural light', 'Near public transport', 'Walkable/bikable to daily errands', 'Walkable/bikable to trails'],
+                    noGo: ['Major structural issues', 'Flood zone', 'Noisy location', 'Needs extensive work', 'Too big of a yard', 'Weird room layout']
+                };
+                saveCriteria();
+            }
+            
+            if (savedHouses) {
+                houses = JSON.parse(savedHouses);
+            }
+        }
+
+        // Save data to localStorage
+        function saveCriteria() {
+            localStorage.setItem('houseCriteria', JSON.stringify(criteria));
+        }
+
+        function saveHouses() {
+            localStorage.setItem('housesList', JSON.stringify(houses));
+        }
+
+        // Tab functionality
+        function showTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+
+            // Render appropriate content
+            if (tabName === 'criteria') {
+                renderCriteria();
+            } else if (tabName === 'houses') {
+                renderHouseForm();
+            } else if (tabName === 'compare') {
+                renderHouses();
+            }
+        }
+
+        // Render criteria lists
+        function renderCriteria() {
+            Object.keys(criteria).forEach(type => {
+                const container = document.getElementById(type === 'mustHave' ? 'mustHaveList' : 
+                                                        type === 'niceToHave' ? 'niceToHaveList' : 'noGoList');
+                container.innerHTML = criteria[type].map(feature => `
+                    <div class="feature-item">
+                        <span>${feature}</span>
+                        <button class="delete-btn" onclick="removeFeature('${type}', '${feature}')">×</button>
+                    </div>
+                `).join('');
+            });
+        }
+
+        // Add feature to criteria
+        function addFeature(type) {
+            const inputId = type === 'mustHave' ? 'mustHaveInput' : 
+                           type === 'niceToHave' ? 'niceToHaveInput' : 'noGoInput';
+            const input = document.getElementById(inputId);
+            const feature = input.value.trim();
+            
+            if (feature && !criteria[type].includes(feature)) {
+                criteria[type].push(feature);
+                saveCriteria();
+                renderCriteria();
+                renderHouseForm(); // Update house form if visible
+                input.value = '';
+            }
+        }
+
+        // Remove feature from criteria
+        function removeFeature(type, feature) {
+            criteria[type] = criteria[type].filter(f => f !== feature);
+            saveCriteria();
+            renderCriteria();
+            renderHouseForm(); // Update house form if visible
+        }
+
+        // Render house form with checkboxes
+        function renderHouseForm() {
+            const container = document.getElementById('checkboxContainer');
+            
+            const sections = [
+                { type: 'mustHave', title: 'Must Haves', class: 'must-have-section' },
+                { type: 'niceToHave', title: 'Nice to Haves', class: 'nice-to-have-section' },
+                { type: 'noGo', title: 'Deal Breakers', class: 'no-go-section' }
+            ];
+
+            container.innerHTML = sections.map(section => `
+                <div class="checkbox-section ${section.class}">
+                    <h4>${section.title}</h4>
+                    ${criteria[section.type].map(feature => `
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="${section.type}-${feature}" name="${section.type}" value="${feature}">
+                            <label for="${section.type}-${feature}">${feature}</label>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+
+        // Auto-format price input
+        function formatPrice(input) {
+            // Remove all non-digits
+            let value = input.value.replace(/\D/g, '');
+            
+            // Don't format if empty
+            if (value === '') {
+                input.value = '';
+                return;
+            }
+            
+            // Convert to number and format with commas
+            let num = parseInt(value);
+            let formatted = '$' + num.toLocaleString();
+            
+            // Set the formatted value
+            input.value = formatted;
+        }
+
+        // Helper function to extract numeric price for sorting
+        function getNumericPrice(priceString) {
+            if (!priceString) return 0;
+            return parseInt(priceString.replace(/[$,]/g, '')) || 0;
+        }
+
+        // Save house
+        function saveHouse(event) {
+            event.preventDefault();
+            
+            const address = document.getElementById('address').value;
+            const price = document.getElementById('price').value;
+            const notes = document.getElementById('notes').value;
+
+            // Get checked features
+            const checkedFeatures = {
+                mustHave: [],
+                niceToHave: [],
+                noGo: []
+            };
+
+            Object.keys(checkedFeatures).forEach(type => {
+                const checkboxes = document.querySelectorAll(`input[name="${type}"]:checked`);
+                checkedFeatures[type] = Array.from(checkboxes).map(cb => cb.value);
+            });
+
+            const house = {
+                id: Date.now(),
+                address,
+                price,
+                notes,
+                features: checkedFeatures,
+                dateAdded: new Date().toISOString()
+            };
+
+            houses.push(house);
+            saveHouses();
+            
+            // Reset form
+            document.getElementById('houseForm').reset();
+            
+            // Show success message and switch to compare tab
+            alert('House saved successfully!');
+            showTab('compare');
+        }
+
+        // Calculate house score
+        function calculateScore(houseFeatures) {
+            let score = 50; // Base score
+            
+            // Must haves: +20 points each
+            score += houseFeatures.mustHave.length * 20;
+            
+            // Nice to haves: +10 points each  
+            score += houseFeatures.niceToHave.length * 10;
+            
+            // Deal breakers: -50 points each (major penalty)
+            score -= houseFeatures.noGo.length * 50;
+            
+            return score;
+        }
+
+        // Render houses for comparison
+        function renderHouses() {
+            const container = document.getElementById('housesContainer');
+            const sortBy = document.getElementById('sortBy').value;
+            const minScore = parseInt(document.getElementById('minScore').value);
+            
+            if (houses.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No houses added yet</h3>
+                        <p>Go to the "Add Houses" tab to start rating properties!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Filter and sort houses
+            let filteredHouses = houses.filter(house => calculateScore(house.features) >= minScore);
+            
+            filteredHouses.sort((a, b) => {
+                switch(sortBy) {
+                    case 'score':
+                        return calculateScore(b.features) - calculateScore(a.features);
+                    case 'address':
+                        return a.address.localeCompare(b.address);
+                    case 'price':
+                        return getNumericPrice(a.price) - getNumericPrice(b.price);
+                    case 'date':
+                        return new Date(b.dateAdded) - new Date(a.dateAdded);
+                    default:
+                        return 0;
+                }
+            });
+
+            container.innerHTML = filteredHouses.map(house => {
+                const score = calculateScore(house.features);
+                
+                return `
+                    <div class="house-card" onclick="toggleHouseDetails(${house.id})">
+                        <div class="score-badge">${score}</div>
+                        <div class="house-header">
+                            <div class="house-title">${house.address}</div>
+                            <div class="house-price">${house.price || 'Price TBD'}</div>
+                        </div>
+                        
+                        ${house.notes ? `<p style="margin-bottom: 15px; color: #666; font-style: italic;">${house.notes}</p>` : ''}
+                        
+                        <div class="features-summary">
+                            <div class="feature-category must-have-bg">
+                                <h4 style="color: #27ae60;">Must Haves Met</h4>
+                                <div class="feature-count">${house.features.mustHave.length}</div>
+                                <div style="font-size: 0.9em; color: #666;">of ${criteria.mustHave.length}</div>
+                            </div>
+                            <div class="feature-category nice-to-have-bg">
+                                <h4 style="color: #f39c12;">Nice to Haves</h4>
+                                <div class="feature-count">${house.features.niceToHave.length}</div>
+                                <div style="font-size: 0.9em; color: #666;">of ${criteria.niceToHave.length}</div>
+                            </div>
+                            <div class="feature-category no-go-bg">
+                                <h4 style="color: #e74c3c;">Deal Breakers</h4>
+                                <div class="feature-count">${house.features.noGo.length}</div>
+                                <div style="font-size: 0.9em; color: #666;">${house.features.noGo.length > 0 ? '⚠️' : '✅'}</div>
+                            </div>
+                        </div>
+
+                        <div class="feature-details" id="details-${house.id}">
+                            ${house.features.mustHave.length > 0 ? `
+                                <div class="must-have-details">
+                                    <h5>✅ Must Haves Present:</h5>
+                                    <div class="feature-list-detail">
+                                        ${house.features.mustHave.map(feature => `<span class="feature-tag must-have">${feature}</span>`).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${house.features.niceToHave.length > 0 ? `
+                                <div class="nice-to-have-details">
+                                    <h5>👍 Nice to Haves Present:</h5>
+                                    <div class="feature-list-detail">
+                                        ${house.features.niceToHave.map(feature => `<span class="feature-tag nice-to-have">${feature}</span>`).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${house.features.noGo.length > 0 ? `
+                                <div class="no-go-details">
+                                    <h5>❌ Deal Breakers Present:</h5>
+                                    <div class="feature-list-detail">
+                                        ${house.features.noGo.map(feature => `<span class="feature-tag no-go">${feature}</span>`).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            ${house.features.mustHave.length === 0 && house.features.niceToHave.length === 0 && house.features.noGo.length === 0 ? 
+                                `<p style="color: #666; font-style: italic;">No features were checked for this house.</p>` : ''}
+                        </div>
+                        
+                        <div class="action-buttons">
+                            <button class="btn btn-danger" onclick="event.stopPropagation(); deleteHouse(${house.id})">Delete House</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Toggle house details
+        function toggleHouseDetails(houseId) {
+            const detailsElement = document.getElementById(`details-${houseId}`);
+            const houseCard = detailsElement.closest('.house-card');
+            
+            if (detailsElement.classList.contains('show')) {
+                detailsElement.classList.remove('show');
+                houseCard.classList.remove('expanded');
+            } else {
+                // Close any other open details first
+                document.querySelectorAll('.feature-details.show').forEach(el => {
+                    el.classList.remove('show');
+                    el.closest('.house-card').classList.remove('expanded');
+                });
+                
+                // Open this one
+                detailsElement.classList.add('show');
+                houseCard.classList.add('expanded');
+            }
+        }
+
+        // Delete house
+        function deleteHouse(id) {
+            if (confirm('Are you sure you want to delete this house?')) {
+                houses = houses.filter(house => house.id !== id);
+                saveHouses();
+                renderHouses();
+            }
+        }
+
+        // Handle Enter key for adding features
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.target.matches('#mustHaveInput, #niceToHaveInput, #noGoInput')) {
+                const inputId = e.target.id;
+                const type = inputId.includes('mustHave') ? 'mustHave' : 
+                           inputId.includes('niceToHave') ? 'niceToHave' : 'noGo';
+                addFeature(type);
+            }
+        });
+
+        // Initialize the app
+        function init() {
+            loadData();
+            renderCriteria();
+        }
+
+        // Initialize when page loads
+        init();
+    </script>
+</body>
+</html>
