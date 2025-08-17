@@ -44,13 +44,21 @@
         .header-content {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            max-width: 1200px;
-            margin: 0 auto;
+            align-items: flex-start;
+            width: 100%;
+            position: relative;
         }
 
         .header-text {
             text-align: left;
+            flex: 1;
+            padding-right: 20px; /* Make room for the gear icon */
+        }
+
+        .settings-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
         }
 
         .header h1 {
@@ -64,41 +72,109 @@
             opacity: 0.9;
         }
 
-        .theme-selector {
+        .settings-btn {
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
             background: rgba(255, 255, 255, 0.1);
-            padding: 10px 15px;
-            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
             backdrop-filter: blur(10px);
         }
 
-        .theme-selector label {
-            color: white;
-            font-weight: 600;
-            margin: 0;
-        }
-
-        .theme-selector select {
+        .settings-btn:hover {
             background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 14px;
-            cursor: pointer;
+            transform: scale(1.1);
         }
 
-        .theme-selector select:focus {
+        /* Settings Panel */
+        .settings-panel {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .settings-panel.show {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 80px;
+        }
+
+        .settings-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            min-width: 300px;
+            max-width: 90vw;
+        }
+
+        .settings-content h3 {
+            margin: 0 0 20px 0;
+            color: #2c3e50;
+            font-size: 1.5em;
+        }
+
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .setting-item label {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .setting-item select {
+            padding: 10px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .setting-item select:focus {
             outline: none;
             border-color: #3498db;
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
         }
 
-        .theme-selector option {
-            background: #2c3e50;
-            color: white;
+        .settings-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .settings-close:hover {
+            background: #f0f0f0;
+            color: #666;
         }
 
         .tabs {
@@ -836,6 +912,34 @@
             color: var(--text-primary);
         }
 
+        .theme-dark .settings-content {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .theme-dark .settings-content h3 {
+            color: var(--text-primary);
+        }
+
+        .theme-dark .setting-item label {
+            color: var(--text-secondary);
+        }
+
+        .theme-dark .setting-item select {
+            background: var(--input-bg);
+            border-color: var(--input-border);
+            color: var(--text-primary);
+        }
+
+        .theme-dark .settings-close {
+            color: var(--text-secondary);
+        }
+
+        .theme-dark .settings-close:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
         /* ------------------ OS Dark Mode (Auto) ------------------ */
         @media (prefers-color-scheme: dark) {
             /* Only apply when no manual theme is selected */
@@ -938,6 +1042,34 @@
             :root:not(.theme-light):not(.theme-dark) .mobile-tab:hover {
                 background: #404040;
             }
+
+            :root:not(.theme-light):not(.theme-dark) .settings-content {
+                background: #1a1a1a;
+                color: #e0e0e0;
+            }
+
+            :root:not(.theme-light):not(.theme-dark) .settings-content h3 {
+                color: #e0e0e0;
+            }
+
+            :root:not(.theme-light):not(.theme-dark) .setting-item label {
+                color: #b0b0b0;
+            }
+
+            :root:not(.theme-light):not(.theme-dark) .setting-item select {
+                background: #2a2a2a;
+                border-color: #404040;
+                color: #e0e0e0;
+            }
+
+            :root:not(.theme-light):not(.theme-dark) .settings-close {
+                color: #b0b0b0;
+            }
+
+            :root:not(.theme-light):not(.theme-dark) .settings-close:hover {
+                background: #2a2a2a;
+                color: #e0e0e0;
+            }
         }
 
         /* ------------------ Responsive ------------------ */
@@ -946,10 +1078,17 @@
                 flex-direction: column;
                 gap: 20px;
                 text-align: center;
+                align-items: center;
             }
 
             .header-text {
                 text-align: center;
+            }
+
+            .settings-btn {
+                position: absolute;
+                top: 5px;
+                right: 5px;
             }
 
             .desktop-tabs {
@@ -1013,7 +1152,17 @@
                     <h1>🏡 House Hunting Tracker</h1>
                     <p>Set your criteria first, then rate houses with simple checkboxes</p>
                 </div>
-                <div class="theme-selector">
+                <div class="settings-btn" onclick="toggleSettings()">
+                    ⚙️
+                </div>
+            </div>
+        </div>
+        
+        <!-- Settings Panel -->
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-content">
+                <h3>Settings</h3>
+                <div class="setting-item">
                     <label for="themeSelect">Theme:</label>
                     <select id="themeSelect" onchange="setTheme(this.value)">
                         <option value="auto">Auto</option>
@@ -1021,6 +1170,7 @@
                         <option value="dark">Dark</option>
                     </select>
                 </div>
+                <button class="settings-close" onclick="closeSettings()">×</button>
             </div>
         </div>
         
@@ -1213,6 +1363,27 @@
             menu.classList.remove('show');
             btn.classList.remove('active');
         }
+
+        // Settings panel functionality
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.toggle('show');
+        }
+
+        function closeSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.remove('show');
+        }
+
+        // Close settings when clicking outside
+        document.addEventListener('click', function(e) {
+            const settingsPanel = document.getElementById('settingsPanel');
+            const settingsBtn = document.querySelector('.settings-btn');
+            
+            if (!settingsBtn.contains(e.target) && !settingsPanel.contains(e.target) && settingsPanel.classList.contains('show')) {
+                closeSettings();
+            }
+        });
 
         // Close mobile menu when clicking outside
         document.addEventListener('click', function(e) {
