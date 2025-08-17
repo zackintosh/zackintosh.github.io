@@ -318,18 +318,22 @@
             margin-bottom: 20px;
             padding-bottom: 15px;
             border-bottom: 2px solid #ecf0f1;
+            padding-right: 80px; /* Make room for score badge */
         }
 
         .house-title {
             font-size: 1.4em;
             font-weight: 700;
             color: #2c3e50;
+            flex: 1;
+            margin-right: 15px;
         }
 
         .house-price {
             font-size: 1.3em;
             font-weight: 700;
             color: #27ae60;
+            white-space: nowrap;
         }
 
         .features-summary {
@@ -361,15 +365,16 @@
 
         .score-badge {
             position: absolute;
-            top: -10px;
-            right: -10px;
+            top: 15px;
+            right: 15px;
             background: linear-gradient(135deg, #f39c12, #e67e22);
             color: white;
-            padding: 10px 15px;
+            padding: 8px 12px;
             border-radius: 50px;
             font-weight: 700;
-            font-size: 1.1em;
+            font-size: 1em;
             box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
+            z-index: 10;
         }
 
         .score-badge.negative {
@@ -872,7 +877,9 @@
                 let scoreClass = '';
                 if (score < 0) {
                     scoreClass = 'negative';
-                } else if (score >= 80) {
+                } else if (criteria.mustHave.length > 0 && house.features.mustHave.length === criteria.mustHave.length) {
+                    scoreClass = 'high';
+                } else if (criteria.mustHave.length === 0 && score >= 20) {
                     scoreClass = 'high';
                 }
                 
