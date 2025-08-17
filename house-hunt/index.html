@@ -31,7 +31,6 @@
             border-radius: 0;
             box-shadow: none;
             backdrop-filter: blur(10px);
-            overflow: hidden;
         }
 
         .header {
@@ -181,6 +180,9 @@
             display: flex;
             background: #f8f9fa;
             border-bottom: 1px solid #e9ecef;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
 
         .tab {
@@ -209,10 +211,12 @@
         /* Mobile Navigation */
         .mobile-nav {
             display: none;
-            position: relative;
+            position: sticky;
+            top: 0;
             background: #f8f9fa;
             border-bottom: 1px solid #e9ecef;
             padding: 15px;
+            z-index: 1000;
         }
 
         .hamburger-btn {
