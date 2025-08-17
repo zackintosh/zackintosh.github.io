@@ -1170,6 +1170,11 @@
                         <option value="dark">Dark</option>
                     </select>
                 </div>
+                
+                <div class="setting-item">
+                    <label>Data Management:</label>
+                    <button class="btn btn-danger" onclick="resetAllData()">🗑️ Reset All Data</button>
+                </div>
                 <button class="settings-close" onclick="closeSettings()">×</button>
             </div>
         </div>
@@ -1395,6 +1400,38 @@
                 closeMobileMenu();
             }
         });
+
+        // Reset all data
+        function resetAllData() {
+            if (confirm('⚠️ WARNING: This will permanently delete ALL your data!\n\nThis includes:\n• All criteria (must-haves, nice-to-haves, deal breakers)\n• All houses you\'ve added\n• All your preferences\n\nAre you absolutely sure you want to continue?')) {
+                // Clear localStorage
+                localStorage.removeItem('houseCriteria');
+                localStorage.removeItem('housesList');
+                localStorage.removeItem('themePreference');
+                
+                // Reset data structures
+                criteria = {
+                    mustHave: ['Good neighborhood', 'Close Move-in ready', 'Garage/Carport', 'AC/Evaporative cooling'],
+                    niceToHave: ['Electric Appliances', '2 baths', 'Updated kitchen', 'Hardwood floors', 'Open floor plan', 'Backyard', 'Good natural light', 'Near public transport', 'Walkable/bikable to daily errands', 'Walkable/bikable to trails'],
+                    noGo: ['Major structural issues', 'Flood zone', 'Noisy location', 'Needs extensive work', 'Too big of a yard', 'Weird room layout']
+                };
+                houses = [];
+                
+                // Reset theme to auto
+                setTheme('auto');
+                
+                // Refresh the UI
+                renderCriteria();
+                renderHouseForm();
+                renderHouses();
+                
+                // Close settings panel
+                closeSettings();
+                
+                // Show success message
+                alert('✅ All data has been reset to defaults!\n\nYou can now start fresh with the default criteria.');
+            }
+        }
 
         // Render criteria lists
         function renderCriteria() {
