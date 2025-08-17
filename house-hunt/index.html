@@ -372,6 +372,16 @@
             box-shadow: 0 4px 15px rgba(243, 156, 18, 0.4);
         }
 
+        .score-badge.negative {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .score-badge.high {
+            background: linear-gradient(135deg, #27ae60, #219a52);
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+        }
+
         .filters {
             display: flex;
             gap: 15px;
@@ -605,7 +615,7 @@
                 
                 <div class="filter-group">
                     <label for="minScore">Min Score:</label>
-                    <input type="number" id="minScore" value="0" onchange="renderHouses()" style="width: 80px;">
+                    <input type="number" id="minScore" value="-999" onchange="renderHouses()" style="width: 80px;">
                 </div>
             </div>
 
@@ -805,8 +815,8 @@
         }
 
         // Calculate house score
-        function calculateScore(houseFeatures) {
-            let score = 50; // Base score
+        function calculateScore(houseFeatures, minScore = -999) {
+            let score = 0; // Base score
             
             // Must haves: +20 points each
             score += houseFeatures.mustHave.length * 20;
@@ -814,10 +824,11 @@
             // Nice to haves: +10 points each  
             score += houseFeatures.niceToHave.length * 10;
             
-            // Deal breakers: -50 points each (major penalty)
-            score -= houseFeatures.noGo.length * 50;
+            // Deal breakers: -100 points each (major penalty)
+            score -= houseFeatures.noGo.length * 100;
             
-            return score;
+            // Ensure score doesn't go below the specified minimum
+            return Math.max(score, minScore);
         }
 
         // Render houses for comparison
@@ -837,12 +848,12 @@
             }
 
             // Filter and sort houses
-            let filteredHouses = houses.filter(house => calculateScore(house.features) >= minScore);
+            let filteredHouses = houses.filter(house => calculateScore(house.features, minScore) >= minScore);
             
             filteredHouses.sort((a, b) => {
                 switch(sortBy) {
                     case 'score':
-                        return calculateScore(b.features) - calculateScore(a.features);
+                        return calculateScore(b.features, minScore) - calculateScore(a.features, minScore);
                     case 'address':
                         return a.address.localeCompare(b.address);
                     case 'price':
@@ -855,11 +866,19 @@
             });
 
             container.innerHTML = filteredHouses.map(house => {
-                const score = calculateScore(house.features);
+                const score = calculateScore(house.features, minScore);
+                
+                // Determine score badge class based on score
+                let scoreClass = '';
+                if (score < 0) {
+                    scoreClass = 'negative';
+                } else if (score >= 80) {
+                    scoreClass = 'high';
+                }
                 
                 return `
                     <div class="house-card" onclick="toggleHouseDetails(${house.id})">
-                        <div class="score-badge">${score}</div>
+                        <div class="score-badge ${scoreClass}">${score}</div>
                         <div class="house-header">
                             <div class="house-title">${house.address}</div>
                             <div class="house-price">${house.price || 'Price TBD'}</div>
