@@ -15,8 +15,16 @@
     <meta name="theme-color" content="#1a1a2e" media="(prefers-color-scheme: dark)">
     <meta name="apple-mobile-web-app-status-bar-style" content="default" media="(prefers-color-scheme: light)">
     <meta name="apple-mobile-web-app-status-bar-style" content="black" media="(prefers-color-scheme: dark)">
+    
+    <!-- Safari UI theme support -->
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
     <style>
-       * {
+               html {
+            color-scheme: light dark;
+        }
+
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -27,6 +35,7 @@
             --light-bg-end: #764ba2;
             --dark-bg-start: #1a1a2e;
             --dark-bg-end: #16213e;
+            color-scheme: light dark;
         }
 
         body {
@@ -35,6 +44,7 @@
             color: #333;
             background: linear-gradient(135deg, var(--light-bg-start) 0%, var(--light-bg-end) 100%);
             min-height: 100vh;
+            color-scheme: light dark;
             /* iOS Safari safe area support */
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
