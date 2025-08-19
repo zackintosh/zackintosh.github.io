@@ -1388,6 +1388,15 @@
         };
         let houses = [];
 
+        // Single source for default criteria (avoid duplication)
+        function getDefaultCriteria() {
+            return {
+                mustHave: ['Good neighborhood', 'Close Move-in ready', 'Garage/Carport', 'AC/Evaporative cooling'],
+                niceToHave: ['Electric Appliances', '2+ baths', 'Updated kitchen', 'Hardwood floors', 'Open floor plan', 'Backyard', 'Good natural light', 'Near public transport', 'Walkable/bikable to daily errands', 'Walkable/bikable to trails'],
+                noGo: ['Major structural issues', 'Flood zone', 'Noisy location', 'Needs extensive work', 'Too big of a yard', 'Weird room layout']
+            };
+        }
+
         // Load data from localStorage
         function loadData() {
             const savedCriteria = localStorage.getItem('houseCriteria');
@@ -1396,12 +1405,8 @@
             if (savedCriteria) {
                 criteria = JSON.parse(savedCriteria);
             } else {
-                // Set default criteria
-                criteria = {
-                    mustHave: ['Good neighborhood', 'Close Move-in ready', 'Garage/Carport', 'AC/Evaporative cooling'],
-                    niceToHave: ['Electric Appliances', '2 baths', 'Updated kitchen', 'Hardwood floors', 'Open floor plan', 'Backyard', 'Good natural light', 'Near public transport', 'Walkable/bikable to daily errands', 'Walkable/bikable to trails'],
-                    noGo: ['Major structural issues', 'Flood zone', 'Noisy location', 'Needs extensive work', 'Too big of a yard', 'Weird room layout']
-                };
+                // Set default criteria (cloned)
+                criteria = getDefaultCriteria();
                 saveCriteria();
             }
             
@@ -1565,11 +1570,7 @@
                 localStorage.removeItem('themePreference');
                 
                 // Reset data structures
-                criteria = {
-                    mustHave: ['Good neighborhood', 'Close Move-in ready', 'Garage/Carport', 'AC/Evaporative cooling'],
-                    niceToHave: ['Electric Appliances', '2 baths', 'Updated kitchen', 'Hardwood floors', 'Open floor plan', 'Backyard', 'Good natural light', 'Near public transport', 'Walkable/bikable to daily errands', 'Walkable/bikable to trails'],
-                    noGo: ['Major structural issues', 'Flood zone', 'Noisy location', 'Needs extensive work', 'Too big of a yard', 'Weird room layout']
-                };
+                criteria = getDefaultCriteria();
                 houses = [];
                 
                 // Reset theme to auto
