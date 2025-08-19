@@ -783,6 +783,14 @@
             color: var(--text-secondary);
         }
 
+        /* Ensure settings dropdown text is visible in light theme */
+        .theme-light .setting-item select {
+            background: var(--input-bg);
+            border-color: var(--input-border);
+            color: var(--text-primary);
+        }
+        .theme-light .setting-item label { color: var(--text-secondary); }
+
         .theme-light .filters select, 
         .theme-light .filters input {
             background: var(--input-bg);
