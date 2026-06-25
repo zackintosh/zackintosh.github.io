@@ -95,10 +95,11 @@
   // which cell corner each shape's L-bracket hugs (legs = walls that reverse the other 2 dirs)
   const SHAPE_CORNER = { LT:'tl', RT:'tr', LB:'bl', RB:'br' };
   const SPDU = {1:2,2:3,3:6,6:6}, SPDD = {6:3,3:2,2:1,1:1};
-  const STIK_MS=1400, INVS_MS=3500;
+  const STIK_MS=2000, INVS_MS=3000;             // original: 120 / 180 ticks (~2s / ~3s)
   const FRAME_MS=33;                            // logic tick (~30fps, matches original feel)
   const BONUS_MS=55;                            // ms per step of the end-of-level timer-bonus count-up
-  const CUPFLASH_MS=420;                        // how long a cup flashes gold after catching a ball
+  const CUPFLASH_MS=500;                        // how long a cup flashes gold (original: 30 ticks ~0.5s)
+  const CUPROT_MS=10000;                        // original: ~600 ticks (~10s) per cup face-step
   const SUPPLY=117;                             // bumper sprite pool 18..134
   const BALLCOL=['#3a5bd0','#4a6be0','#3a7bd0','#4a5bc0','#2f5bd8','#4060d8','#3a66c8'];
   // original BLiX palette: mauve field, royal-blue pieces, green player bumpers
@@ -319,8 +320,8 @@
   function tickFrame(){
     if(G.state!=='playing') return;
     G.timerVar++;
-    // cups that rotate (behavior 1 = CW, 2 = CCW); ~ every 600/ (timer scale) frames
-    for(const c of G.cups){ if(c.beh===1||c.beh===2){ c.rotT++; if(c.rotT>=18){ c.rotT=0;
+    // cups that rotate (behavior 1 = CW, 2 = CCW): one face-step every ~10s, per the original
+    for(const c of G.cups){ if(c.beh===1||c.beh===2){ c.rotT++; if(c.rotT*FRAME_MS>=CUPROT_MS){ c.rotT=0;
       c.face = c.beh===1 ? (c.face%4)+1 : ((c.face+2)%4)+1; } } }
     for(const b of G.balls){ if(b.alive) stepBall(b); if(G.state!=='playing') return; }
     // ring timer
@@ -560,13 +561,14 @@
     return {gx,gy,shape,slotY};
   }
   function placeAt(px,py){
-    if(G.state!=='playing') return;
+    if(G.state!=='playing'&&G.state!=='paused') return;   // allow placing to resume a paused game
     const cell=pickCell(px,py); if(!cell) return;
     const fxX=(px-G.originX)/(G.cell/U), fxY=(py-G.originY)/(G.cell/U);
     const pv=hoverShape(cell[0],cell[1],[fxX,fxY]); if(!pv) return;
     if(slot(pv.gx,pv.slotY)){ G.flash={c:cell[0],r:cell[1],t0:NOW}; return; }
     if(G.placed>=G.supply){ G.flash={c:cell[0],r:cell[1],t0:NOW}; return; }
     setSlot(pv.gx,pv.slotY,{t:'bumper',shape:pv.shape,perm:false}); G.placed++;
+    if(G.state==='paused') togglePause();                 // a successful placement unpauses
     Sound.place(); fx((pv.gx-1)*U+12,(pv.gy-1)*U+12,COL.bump,4); updateStatus();
   }
   function removeAt(px,py){
