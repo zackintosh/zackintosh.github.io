@@ -20,7 +20,6 @@
   .top{top:0;padding:16px 16px 0;} .bottom{bottom:0;padding:0 16px 18px;}
   h1{font-size:clamp(20px,3.6vw,30px);font-weight:700;letter-spacing:1px;text-shadow:0 2px 18px rgba(0,0,0,.6);}
   h1 .x{color:var(--neon);text-shadow:0 0 14px var(--neon);}
-  .sub{margin-top:4px;font-size:12px;opacity:.5;text-align:center;max-width:520px;}
   #status{margin-top:10px;font-size:clamp(14px,2.6vw,18px);font-weight:600;min-height:22px;
           padding:6px 18px;border-radius:999px;background:rgba(255,255,255,.06);backdrop-filter:blur(8px);
           border:1px solid rgba(255,255,255,.08);transition:color .2s;text-align:center;}
@@ -34,7 +33,8 @@
   button.active{background:rgba(120,180,255,.24);border-color:#7ab4ff;color:#fff;}
   #ov{position:fixed;inset:0;display:none;place-items:center;background:rgba(6,8,16,.55);backdrop-filter:blur(3px);z-index:10;}
   #ov .panel{background:rgba(24,28,44,.96);border:1px solid rgba(255,255,255,.14);border-radius:16px;
-             padding:22px 26px;text-align:center;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.55);}
+             padding:22px 26px;text-align:center;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.55);
+             max-height:88vh;overflow-y:auto;}
   #ov h2{font-size:23px;font-weight:700;margin-bottom:8px;letter-spacing:.5px;}
   #ov h3{font-size:15px;font-weight:600;margin-bottom:14px;opacity:.85;}
   #ov p{font-size:13px;opacity:.72;line-height:1.5;margin-bottom:14px;}
@@ -55,17 +55,16 @@
   <canvas id="cv"></canvas>
   <div class="hud top">
     <h1>BLi<span class="x">X</span></h1>
-    <div class="sub">Click a cell to drop a corner deflector (click side of the cell to choose its angle). Bend every ball into a cup before the ring closes. Right-click / long-press removes a corner. Corners vanish after one hit.</div>
     <div id="status">Press Start</div>
     <div id="hint"></div>
   </div>
   <div class="hud bottom">
     <div class="controls">
-      <button id="startBtn">Start</button>
       <button id="pauseBtn" style="display:none">Pause</button>
+      <button id="startBtn">Start</button>
       <button id="resetBtn">↺ Level 1</button>
       <button id="levelsBtn">Password</button>
-      <button id="helpBtn">❔ Power-ups</button>
+      <button id="helpBtn">❔ Help</button>
       <button id="soundBtn">🔇 Sound</button>
     </div>
   </div>
@@ -342,7 +341,7 @@
       ctx.setTransform(dpr,0,0,dpr,0,0); lastW=w;lastH=h;lastDpr=dpr;
       const te=document.querySelector('.hud.top'), be=document.querySelector('.hud.bottom');   // measure HUDs only on resize
       if(te) hudTopH=te.getBoundingClientRect().height; if(be) hudBotH=be.getBoundingClientRect().height; }
-    const topR=hudTopH+12, botR=hudBotH+12, meterAllow=1.2;            // reserve top/bottom HUDs; framed strip extends ~1.2 cell below the board
+    const topR=hudTopH+24, botR=hudBotH+12, meterAllow=1.2;            // reserve top/bottom HUDs (extra gap up top so the password isn't flush with the board); framed strip extends ~1.2 cell below the board
     const availH=Math.max(140, h-topR-botR);                          // vertical room for the board + meter strip
     G.cell=Math.floor(Math.min(w*0.92/COLS, availH/(ROWS+meterAllow)));
     G.originX=Math.round((w-G.cell*COLS)/2);
@@ -417,17 +416,28 @@
     ctx.restore();
   }
   function drawCup(c){
-    const x=G.originX+(c.gx-1)*G.cell, y=G.originY+(c.gy-1)*G.cell, s=G.cell, p=s*0.13;  // p = white half-width, so walls + open tips land exactly on the cell-border lines
-    const L=x+p,R=x+s-p,T=y+p,B=y+s-p;
-    const path=()=>{ ctx.beginPath();
-      if(c.face===1){ ctx.moveTo(L,T);ctx.lineTo(L,B);ctx.lineTo(R,B);ctx.lineTo(R,T); }       // open up
-      else if(c.face===3){ ctx.moveTo(L,B);ctx.lineTo(L,T);ctx.lineTo(R,T);ctx.lineTo(R,B); }   // open down
-      else if(c.face===2){ ctx.moveTo(R,T);ctx.lineTo(L,T);ctx.lineTo(L,B);ctx.lineTo(R,B); }   // open right
-      else { ctx.moveTo(L,T);ctx.lineTo(R,T);ctx.lineTo(R,B);ctx.lineTo(L,B); } };              // open left
+    const x=G.originX+(c.gx-1)*G.cell, y=G.originY+(c.gy-1)*G.cell, s=G.cell, cx=x+s/2, cy=y+s/2;
+    const lw=Math.max(2,s*0.05), m=lw/2, wt=s*0.24, OL=x+m,OR=x+s-m,OT=y+m,OB=y+s-m;   // lw=outline; m sets the outer edge on the cell border so the cup fills its cell; wt=wall thickness
+    // The original cup art: a white-outlined "U" with a two-tone body — dark royal blue on the left
+    // wall + floor, a lighter periwinkle on the (lit) right wall. The 8-point outline traces both the
+    // outer perimeter and the inner cavity at once. The whole sprite rotates a quarter-turn CW per face
+    // (2=open right, 3=down, 4=left), like the original's spinning bitmap.
+    const pts=[[OL,OT],[OL,OB],[OR,OB],[OR,OT],[OR-wt,OT],[OR-wt,OB-wt],[OL+wt,OB-wt],[OL+wt,OT]];
+    const trace=()=>{ ctx.beginPath(); pts.forEach((q,i)=> i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])); ctx.closePath(); };
     const flashing = c.flashT && NOW-c.flashT < CUPFLASH_MS;                 // gold flash just after a catch
-    ctx.save(); ctx.lineCap='square'; ctx.lineJoin='miter';
-    ctx.strokeStyle=COL.blueEdge; ctx.lineWidth=Math.max(4,s*0.26); path(); ctx.stroke();   // ~0.50s inner opening fits the ball
-    ctx.strokeStyle=flashing?COL.cupFlash:COL.blue; ctx.lineWidth=Math.max(2,s*0.16); path(); ctx.stroke();
+    const dark  = flashing?COL.cupFlash:COL.blue;
+    const light = flashing?mixW(COL.cupFlash,0.45):mixW(COL.blue,0.58);      // the lit right face
+    const edge  = flashing?'#fff3cf':COL.blueEdge;
+    const rot={1:0,2:1,3:2,4:3}[c.face]||0;
+    const rotating = c.beh===1||c.beh===2;
+    const lx = c.beh===2 ? OL : OR-wt;     // lit wall marks the spin direction: CCW (beh 2) -> left, CW -> right
+    ctx.save();
+    ctx.translate(cx,cy); ctx.rotate(rot*Math.PI/2); ctx.translate(-cx,-cy);
+    ctx.lineJoin='miter'; ctx.lineCap='square';
+    ctx.fillStyle=dark;  trace(); ctx.fill();                                // dark body
+    if(rotating){ ctx.fillStyle=light; ctx.fillRect(lx,OT,wt,OB-OT); }       // lit wall only on rotating cups, on the side they turn toward
+
+    ctx.strokeStyle=edge; ctx.lineWidth=lw; trace(); ctx.stroke();           // white outline (outer + cavity)
     ctx.restore();
   }
   function drawBlock(gx,gy,br){
@@ -643,6 +653,11 @@
     hintEl.textContent = (playing && LEVELS[G.level] && LEVELS[G.level].pw) ? `Password: ${LEVELS[G.level].pw}` : '';
     renderOverlay();
   }
+  const HOW_ITEMS=[
+    ['◣','#caa6b6','Drop a corner','Click a cell to drop a corner deflector — click near a side of the cell to choose its angle.'],
+    ['◉','#ff5cc8','Reach the cups','Bend every ball into a cup before the ring closes in.'],
+    ['✕','#ff3344','Clear a corner','Right-click or long-press removes a corner. Each corner vanishes after one hit.'],
+  ];
   const HELP_ITEMS=[
     ['S','#e6b53a','Stick','freezes the ball in place for a moment, then it carries on.'],
     ['◈','#3a9bd0','Teleport','warps the ball across to the paired teleport pad.'],
@@ -654,8 +669,12 @@
   function renderOverlay(){
     const s=G.state; let html='';
     if(G.showHelp){
-      const rows=HELP_ITEMS.map(([g,c,nm,ds])=>`<li><span class="ic" style="color:${c}">${g}</span><span><b>${nm}</b> — ${ds}</span></li>`).join('');
-      html=`<div class="panel"><h2>Power-ups</h2><h3>Run a moving ball over an item to trigger it</h3>
+      const li=([g,c,nm,ds])=>`<li><span class="ic" style="color:${c}">${g}</span><span><b>${nm}</b> — ${ds}</span></li>`;
+      const howRows=HOW_ITEMS.map(li).join('');
+      const rows=HELP_ITEMS.map(li).join('');
+      html=`<div class="panel"><h2>How to Play</h2>
+        <ul class="help">${howRows}</ul>
+        <h3>Power-ups — run a moving ball over an item to trigger it</h3>
         <ul class="help">${rows}</ul><div class="row"><button data-act="closehelp">Got it</button></div></div>`;
     } else if(G.showCode){ html=`<div class="panel"><h3>Enter a Password</h3>
       <input id="codeInput" maxlength="5" placeholder="" autocomplete="off" autocorrect="off" spellcheck="false">
