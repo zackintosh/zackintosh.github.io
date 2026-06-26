@@ -1,0 +1,1096 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>DRUKQ WARS — AI-83 Edition</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    background: radial-gradient(circle at 50% 25%, #3a3f47, #131418 70%);
+    overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+    touch-action: manipulation;
+  }
+  .stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+
+  /* ---- Calculator body ---- */
+  .calc {
+    --h: min(97vh, calc(95vw * 2.05));
+    height: var(--h);
+    width: calc(var(--h) / 2.05);
+    font-size: calc(var(--h) / 53);
+    background: linear-gradient(158deg, #50565f 0%, #393e45 55%, #2a2e34 100%);
+    border-radius: 1.3em 1.3em 1.9em 1.9em;
+    padding: 0.9em 0.85em 1.3em;
+    box-shadow: 0 1.6em 3.5em rgba(0,0,0,0.6), inset 0 0 0 0.12em rgba(120,128,138,0.6), inset 0 -0.5em 1em rgba(0,0,0,0.4);
+    display: flex; flex-direction: column; gap: 0.5em; position: relative;
+  }
+
+  .brand { display: flex; align-items: center; justify-content: space-between; padding: 0 0.35em; height: 1.3em; }
+  .brand .ti { display: flex; align-items: center; gap: 0.35em; }
+  .brand .ti .logo {
+    width: 0.95em; height: 0.95em; border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #ff5b5b, #b01818);
+    box-shadow: inset 0 0 0 0.08em rgba(255,255,255,0.3);
+  }
+  .brand .ti .name { font-size: 0.52em; font-weight: 800; letter-spacing: 0.08em; color: #d9dde2; }
+  .brand .model { font-size: 0.72em; font-weight: 800; color: #eef1f5; letter-spacing: 0.02em; }
+
+  /* ---- Screen ---- */
+  .screenwell {
+    background: linear-gradient(#26292e, #16181c);
+    border-radius: 0.5em; padding: 5% 8%;
+    box-shadow: inset 0 0.1em 0.5em rgba(0,0,0,0.85), 0 0.1em 0 rgba(255,255,255,0.04);
+  }
+  .lcd {
+    position: relative; width: 100%; aspect-ratio: 3 / 2;
+    background: #aab494; border-radius: 0.12em;
+    box-shadow: inset 0 0 0 0.22em #717865, inset 0 0 0.7em rgba(0,0,0,0.45);
+    overflow: hidden;
+  }
+  .lcd canvas {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    image-rendering: pixelated;
+  }
+  .lcd .glare {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(118deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.04) 32%, rgba(255,255,255,0) 55%);
+    mix-blend-mode: screen;
+  }
+
+  /* ---- Function key row ---- */
+  .fkeys { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.42em; }
+
+  /* ---- Keypad ---- */
+  .keypad {
+    flex: 1; display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+    gap: 0.42em;
+  }
+  .cell { display: flex; flex-direction: column; min-width: 0; }
+  .over { display: flex; justify-content: space-between; align-items: flex-end; height: 0.92em; line-height: 1; padding: 0 0.18em 0.04em; }
+  .over .sec { font-size: 0.43em; font-weight: 700; color: #79c2ee; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+  .over .alp { font-size: 0.43em; font-weight: 700; color: #4fc488; white-space: nowrap; }
+
+  .key {
+    flex: 1; min-height: 1.4em; border: none; border-radius: 0.34em;
+    background: linear-gradient(#5c636d, #3c424a);
+    color: #eef0ee; font-family: inherit; font-weight: 700; font-size: 0.6em;
+    line-height: 1.02; cursor: pointer; padding: 0.12em;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    box-shadow: 0 0.16em 0 #181b1f, 0 0.2em 0.25em rgba(0,0,0,0.45);
+    transition: transform 0.04s ease, box-shadow 0.04s ease, filter 0.04s ease;
+  }
+  .key sub, .key sup { font-size: 0.7em; }
+  .key.pressed, .key:active {
+    transform: translateY(0.14em);
+    box-shadow: 0 0.02em 0 #181b1f, 0 0.04em 0.1em rgba(0,0,0,0.5);
+    filter: brightness(1.2);
+  }
+  .k-num { background: linear-gradient(#f2f0e4, #cfccbd); color: #23272d; font-size: 0.82em; box-shadow: 0 0.16em 0 #8b887b, 0 0.2em 0.25em rgba(0,0,0,0.45); }
+  .k-op { background: linear-gradient(#62749a, #3b4a69); font-size: 0.78em; }
+  .k-enter { background: linear-gradient(#62749a, #3b4a69); }
+  .k-2nd { background: linear-gradient(#5b93cb, #335f8d); }
+  .k-alpha { background: linear-gradient(#41b276, #26764b); }
+  .k-graph { background: linear-gradient(#4b576a, #303a48); font-size: 0.5em; border-radius: 0.55em 0.55em 0.32em 0.32em; }
+  .k-clear { background: linear-gradient(#5c636d, #3c424a); }
+
+  /* ---- D-pad ---- */
+  .dpad { position: relative; }
+  .pad {
+    position: absolute; inset: 4%; border-radius: 50%;
+    background: radial-gradient(circle at 50% 38%, #84a6d2, #2f4f7a 78%);
+    box-shadow: inset 0 0 0.35em rgba(255,255,255,0.35), inset 0 -0.2em 0.4em rgba(0,0,0,0.45), 0 0.16em 0.3em rgba(0,0,0,0.5);
+  }
+  .pad::before {
+    content: ''; position: absolute; inset: 36%; border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, #6b8cb8, #3a577f);
+    box-shadow: inset 0 0 0.2em rgba(0,0,0,0.4);
+  }
+  .pad button { position: absolute; width: 34%; height: 34%; background: transparent; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; }
+  .pad .up { top: 1%; left: 33%; }
+  .pad .down { bottom: 1%; left: 33%; }
+  .pad .left { left: 1%; top: 33%; }
+  .pad .right { right: 1%; top: 33%; }
+  .pad button::after { content: ''; border: 0.34em solid transparent; display: block; }
+  .pad .up::after { border-bottom-color: #eaf1fb; transform: translateY(-0.18em); }
+  .pad .down::after { border-top-color: #eaf1fb; transform: translateY(0.18em); }
+  .pad .left::after { border-right-color: #eaf1fb; transform: translateX(-0.18em); }
+  .pad .right::after { border-left-color: #eaf1fb; transform: translateX(0.18em); }
+  .pad button.pressed::after { filter: brightness(1.6) drop-shadow(0 0 0.1em #fff); }
+
+  .hint { position: fixed; bottom: 0.45em; left: 0; right: 0; text-align: center; color: #6c727c; font-size: 11px; letter-spacing: 0.02em; pointer-events: none; }
+  .hint b { color: #97cde8; font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="calc" id="calc">
+      <div class="brand">
+        <span class="ti"><span class="logo"></span><span class="name">ARTIFICIAL INSTRUMENTS</span></span>
+        <span class="model">AI-83 Plus</span>
+      </div>
+      <div class="screenwell">
+        <div class="lcd">
+          <canvas id="screen" width="96" height="64"></canvas>
+          <div class="glare"></div>
+        </div>
+      </div>
+      <div class="fkeys" id="fkeys"></div>
+      <div class="keypad" id="keypad"></div>
+    </div>
+  </div>
+  <div class="hint">Play with the calculator keys or your keyboard &mdash; <b>1-7</b> menu &middot; <b>ENTER</b> &middot; <b>CLEAR</b>=back &middot; arrows &middot; <b>[ON]</b> sound &middot; <b>[MODE]</b> music &middot; <b>[GRAPH]</b> &#9835;</div>
+
+<script>
+// @ts-check
+"use strict";
+/* ============================================================
+   DRUKQ WARS — AI-83 Edition  (a Drug Wars remake; name nods to Aphex Twin)
+   A faithful remake of the classic TI-BASIC Drugwars, rendered on a
+   simulated "AI-83" calculator (styled after the TI-83 Plus). No build step.
+   ============================================================ */
+
+/* ---------- 5x7 bitmap font (rendered in 6x8 cells => 16x8 grid) ---------- */
+const FONT = (() => {
+  /** @type {Record<string,string[]>} */
+  const F = {};
+  const def = (ch, rows) => { F[ch] = rows; };
+  def(" ", ["....." ,"....." ,"....." ,"....." ,"....." ,"....." ,"....."]);
+  def("!", ["..#..","..#..","..#..","..#..","..#..",".....","..#.."]);
+  def('"', [".#.#.",".#.#.",".#.#.",".....",".....",".....","....."]);
+  def("#", [".#.#.",".#.#.","#####",".#.#.","#####",".#.#.",".#.#."]);
+  def("$", ["..#..",".####","#.#..",".###.","..#.#","####.","..#.."]);
+  def("%", ["##...","##..#","...#.","..#..",".#...","#..##","...##"]);
+  def("'", ["..#..","..#..",".#...",".....",".....",".....","....."]);
+  def("(", ["...#.","..#..",".#...",".#...",".#...","..#..","...#."]);
+  def(")", [".#...","..#..","...#.","...#.","...#.","..#..",".#..."]);
+  def("*", [".....","..#..","#.#.#",".###.","#.#.#","..#..","....."]);
+  def("+", [".....","..#..","..#..","#####","..#..","..#..","....."]);
+  def(",", [".....",".....",".....",".....","..#..","..#..",".#..."]);
+  def("-", [".....",".....",".....","#####",".....",".....","....."]);
+  def(".", [".....",".....",".....",".....",".....",".##..",".##.."]);
+  def("/", ["....#","....#","...#.","..#..",".#...","#....","#...."]);
+  def("0", [".###.","#...#","#..##","#.#.#","##..#","#...#",".###."]);
+  def("1", ["..#..",".##..","..#..","..#..","..#..","..#..",".###."]);
+  def("2", [".###.","#...#","....#","..##.",".#...","#....","#####"]);
+  def("3", ["#####","...#.","..#..","...#.","....#","#...#",".###."]);
+  def("4", ["...#.","..##.",".#.#.","#..#.","#####","...#.","...#."]);
+  def("5", ["#####","#....","####.","....#","....#","#...#",".###."]);
+  def("6", ["..##.",".#...","#....","####.","#...#","#...#",".###."]);
+  def("7", ["#####","....#","...#.","..#..",".#...",".#...",".#..."]);
+  def("8", [".###.","#...#","#...#",".###.","#...#","#...#",".###."]);
+  def("9", [".###.","#...#","#...#",".####","....#","...#.",".##.."]);
+  def(":", [".....",".##..",".##..",".....",".##..",".##..","....."]);
+  def("<", ["...#.","..#..",".#...","#....",".#...","..#..","...#."]);
+  def("=", [".....",".....","#####",".....","#####",".....","....."]);
+  def(">", [".#...","..#..","...#.","....#","...#.","..#..",".#..."]);
+  def("?", [".###.","#...#","....#","..##.","..#..",".....","..#.."]);
+  def("@", [".###.","#...#","#.##.","#.#.#","#.###","#....",".###."]);
+  def("A", [".###.","#...#","#...#","#####","#...#","#...#","#...#"]);
+  def("B", ["####.","#...#","#...#","####.","#...#","#...#","####."]);
+  def("C", [".###.","#...#","#....","#....","#....","#...#",".###."]);
+  def("D", ["###..","#..#.","#...#","#...#","#...#","#..#.","###.."]);
+  def("E", ["#####","#....","#....","####.","#....","#....","#####"]);
+  def("F", ["#####","#....","#....","####.","#....","#....","#...."]);
+  def("G", [".###.","#...#","#....","#.###","#...#","#...#",".###."]);
+  def("H", ["#...#","#...#","#...#","#####","#...#","#...#","#...#"]);
+  def("I", [".###.","..#..","..#..","..#..","..#..","..#..",".###."]);
+  def("J", ["..###","...#.","...#.","...#.","#..#.","#..#.",".##.."]);
+  def("K", ["#...#","#..#.","#.#..","##...","#.#..","#..#.","#...#"]);
+  def("L", ["#....","#....","#....","#....","#....","#....","#####"]);
+  def("M", ["#...#","##.##","#.#.#","#.#.#","#...#","#...#","#...#"]);
+  def("N", ["#...#","#...#","##..#","#.#.#","#..##","#...#","#...#"]);
+  def("O", [".###.","#...#","#...#","#...#","#...#","#...#",".###."]);
+  def("P", ["####.","#...#","#...#","####.","#....","#....","#...."]);
+  def("Q", [".###.","#...#","#...#","#...#","#.#.#","#..#.",".##.#"]);
+  def("R", ["####.","#...#","#...#","####.","#.#..","#..#.","#...#"]);
+  def("S", [".###.","#...#","#....",".###.","....#","#...#",".###."]);
+  def("T", ["#####","..#..","..#..","..#..","..#..","..#..","..#.."]);
+  def("U", ["#...#","#...#","#...#","#...#","#...#","#...#",".###."]);
+  def("V", ["#...#","#...#","#...#","#...#","#...#",".#.#.","..#.."]);
+  def("W", ["#...#","#...#","#...#","#.#.#","#.#.#","##.##","#...#"]);
+  def("X", ["#...#","#...#",".#.#.","..#..",".#.#.","#...#","#...#"]);
+  def("Y", ["#...#","#...#",".#.#.","..#..","..#..","..#..","..#.."]);
+  def("Z", ["#####","....#","...#.","..#..",".#...","#....","#####"]);
+  return F;
+})();
+
+/* ---------- Screen / framebuffer ---------- */
+const COLS = 16, ROWS = 8, CW = 6, CH = 8;
+const BG = "#aab494", FG = "#2c3318";
+const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById("screen"));
+const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext("2d"));
+
+function clearScreen() { ctx.fillStyle = BG; ctx.fillRect(0, 0, 96, 64); }
+function px(x, y) { ctx.fillStyle = FG; ctx.fillRect(x, y, 1, 1); }
+function rect(x, y, w, h) { ctx.fillStyle = FG; ctx.fillRect(x, y, w, h); }
+
+function drawGlyph(ch, cx, cy, invert) {
+  const g = FONT[ch] || FONT["?"];
+  // Inverse-video fills the glyph height (7px) but leaves the 1px row gap clear,
+  // so a highlighted line stays visually separated from the rows above/below.
+  if (invert) { ctx.fillStyle = FG; ctx.fillRect(cx, cy, CW, CH - 1); }
+  ctx.fillStyle = invert ? BG : FG;
+  for (let r = 0; r < 7; r++) {
+    const row = g[r];
+    for (let c = 0; c < 5; c++) {
+      if (row[c] === "#") ctx.fillRect(cx + c, cy + r, 1, 1);
+    }
+  }
+}
+/** @param {number} col @param {number} row @param {string} str */
+function putText(col, row, str, invert) {
+  str = String(str).toUpperCase();
+  for (let i = 0; i < str.length && col + i < COLS; i++) {
+    if (col + i < 0) continue;
+    drawGlyph(str[i], (col + i) * CW, row * CH, invert);
+  }
+}
+function center(row, str, invert) {
+  str = String(str);
+  putText(Math.floor((COLS - str.length) / 2), row, str, invert);
+}
+/** Left-justify l, right-justify r, within 16 cols. */
+function rowLR(l, r) {
+  l = String(l); r = String(r);
+  let gap = COLS - l.length - r.length;
+  if (gap < 1) { l = l.slice(0, Math.max(0, COLS - r.length - 1)); gap = COLS - l.length - r.length; }
+  return l + " ".repeat(Math.max(1, gap)) + r;
+}
+
+/* ---------- Game data ---------- */
+const DRUGS = [
+  { key: "COKE", name: "COKE", min: 15000, max: 28000 },
+  { key: "HEROIN", name: "HEROIN", min: 5000, max: 12000 },
+  { key: "ACID", name: "ACID", min: 1000, max: 4200 },
+  { key: "WEED", name: "WEED", min: 300, max: 720 },
+  { key: "SPEED", name: "SPEED", min: 70, max: 220 },
+  { key: "LUDES", name: "LUDES", min: 10, max: 50 },
+];
+const LOCS = ["BRONX", "GHETTO", "CEN PARK", "MANHATTAN", "CONEY IS", "BROOKLYN"];
+const BRONX = 0;
+const MAX_DAYS = 30;
+const HI_KEY = "drukqwars_ti83_hi";
+
+function ri(lo, hi) { return Math.floor(Math.random() * (hi - lo + 1)) + lo; }
+function money(n) { return "$" + n; }
+
+/* ---------- State ---------- */
+function loadHi() { try { return parseInt(localStorage.getItem(HI_KEY) || "0", 10) || 0; } catch (e) { return 0; } }
+function saveHi(v) { try { localStorage.setItem(HI_KEY, String(v)); } catch (e) {} }
+
+const state = {
+  screen: "TITLE",
+  day: 1,
+  loc: BRONX,
+  cash: 2000, debt: 5000, bank: 0,
+  coatMax: 100, health: 100, guns: 0,
+  /** @type {Record<string,number>} */ inv: {},
+  /** @type {Record<string,number>} */ prices: {},
+  selN: 1,
+  /** @type {any} */ entry: null,
+  /** @type {string[]} */ eventLines: [],
+  afterEvent: "MAIN",
+  /** @type {any} */ offer: null,
+  copsN: 0,
+  died: false,
+  sound: true,
+  music: true,
+  hi: loadHi(),
+  prevScreen: "TITLE",
+};
+
+function coatLoad() { let s = 0; for (const d of DRUGS) s += state.inv[d.key] || 0; return s; }
+function score() { return state.cash + state.bank - state.debt; }
+
+function rollPrices() {
+  for (const d of DRUGS) {
+    // ~12% chance a drug is unavailable in this market today
+    state.prices[d.key] = Math.random() < 0.12 ? 0 : ri(d.min, d.max);
+  }
+}
+
+function newGame() {
+  state.day = 1; state.loc = BRONX;
+  state.cash = 2000; state.debt = 5000; state.bank = 0;
+  state.coatMax = 100; state.health = 100; state.guns = 0;
+  state.inv = {}; for (const d of DRUGS) state.inv[d.key] = 0;
+  state.entry = null; state.offer = null; state.copsN = 0; state.died = false;
+  rollPrices();
+}
+
+/* ---------- Screen transitions ---------- */
+let lastT = 0;
+let transitionStart = -1;
+function setScreen(s) {
+  state.screen = s;
+  state.selN = 1;
+  transitionStart = lastT;
+  updateMusicGain(); // music is gameplay-only; ramps in/out as the screen changes
+}
+
+/* ---------- Rendering ---------- */
+function priceStr(key) { const p = state.prices[key]; return p > 0 ? "$" + p : "----"; }
+
+function drawTitle(t) {
+  // border
+  rect(0, 0, 96, 1); rect(0, 63, 96, 1); rect(0, 0, 1, 64); rect(95, 0, 1, 64);
+  center(1, "* DRUKQ WARS *");
+  center(2, "AI-83 EDITION");
+  center(4, "BUY LOW,");
+  center(5, "SELL HIGH,");
+  center(6, "DODGE THE COPS");
+  if (Math.floor(t / 420) % 2 === 0) center(7, "PRESS ENTER");
+}
+
+function drawMain() {
+  putText(0, 0, rowLR("DRUKQWARS", "D" + state.day + "/" + MAX_DAYS));
+  putText(0, 1, rowLR(LOCS[state.loc], "HP" + state.health));
+  putText(0, 2, rowLR("CASH", money(state.cash)));
+  putText(0, 3, rowLR("DEBT", money(state.debt)));
+  putText(0, 4, rowLR("BANK " + money(state.bank), coatLoad() + "/" + state.coatMax));
+  for (const o of mainOpts()) putText(o.c, o.r, o.l, state.selN === o.n);
+}
+function mainOpts() {
+  const o = [
+    { n: 1, r: 5, c: 0, l: "1BUY" },
+    { n: 2, r: 5, c: 5, l: "2SELL" },
+    { n: 3, r: 5, c: 11, l: "3JET" },
+    { n: 4, r: 6, c: 0, l: "4BAG" },
+    { n: 5, r: 6, c: 5, l: "5PRICE" },
+  ];
+  if (state.loc === BRONX) o.push({ n: 6, r: 7, c: 0, l: "6LOAN" }, { n: 7, r: 7, c: 7, l: "7BANK" });
+  return o;
+}
+
+function drugRow(n, d, withHave) {
+  let left = n + d.name;
+  if (withHave) left += " x" + (state.inv[d.key] || 0);
+  return rowLR(left, priceStr(d.key));
+}
+function drawBuy() {
+  putText(0, 0, rowLR("BUY", money(state.cash)));
+  putText(0, 1, rowLR("BAG " + coatLoad() + "/" + state.coatMax, ""));
+  for (let i = 0; i < 6; i++) putText(0, i + 2, drugRow(i + 1, DRUGS[i], false), state.selN === i + 1);
+}
+function drawSell() {
+  putText(0, 0, rowLR("SELL", money(state.cash)));
+  putText(0, 1, "PICK TO SELL:");
+  for (let i = 0; i < 6; i++) putText(0, i + 2, drugRow(i + 1, DRUGS[i], true), state.selN === i + 1);
+}
+function drawJet() {
+  putText(0, 0, rowLR("JET WHERE?", "1DAY"));
+  putText(0, 1, "----------------");
+  for (let i = 0; i < 6; i++) {
+    let lbl = (i + 1) + " " + LOCS[i];
+    if (i === state.loc) lbl += " (HERE)";
+    putText(0, i + 2, lbl, state.selN === i + 1);
+  }
+}
+function drawPrices() {
+  putText(0, 0, rowLR("PRICES", "DAY" + state.day));
+  for (let i = 0; i < 6; i++) putText(0, i + 1, rowLR(DRUGS[i].name, priceStr(DRUGS[i].key)));
+  putText(0, 7, "  PRESS ENTER");
+}
+function drawBag() {
+  putText(0, 0, rowLR("YOUR BAG", coatLoad() + "/" + state.coatMax));
+  for (let i = 0; i < 6; i++) putText(0, i + 1, rowLR(DRUGS[i].name, "x" + (state.inv[DRUGS[i].key] || 0)));
+  putText(0, 7, rowLR("GUNS " + state.guns, "ENTER"));
+}
+function drawShark() {
+  putText(0, 0, "LOAN SHARK");
+  putText(0, 1, "----------------");
+  putText(0, 2, rowLR("DEBT", money(state.debt)));
+  putText(0, 3, rowLR("CASH", money(state.cash)));
+  putText(0, 5, "1:PAY DEBT", state.selN === 1);
+  putText(0, 6, "2:BORROW", state.selN === 2);
+  putText(0, 7, "CLR=BACK");
+}
+function drawBank() {
+  putText(0, 0, "THE BANK");
+  putText(0, 1, "----------------");
+  putText(0, 2, rowLR("BANK", money(state.bank)));
+  putText(0, 3, rowLR("CASH", money(state.cash)));
+  putText(0, 5, "1:DEPOSIT", state.selN === 1);
+  putText(0, 6, "2:WITHDRAW", state.selN === 2);
+  putText(0, 7, "CLR=BACK");
+}
+function drawEntry(t) {
+  const e = state.entry;
+  putText(0, 0, e.title);
+  let r = 1;
+  for (const ln of e.info) putText(0, r++, ln);
+  putText(0, 5, "(UP=MAX)");
+  const blink = Math.floor(t / 420) % 2 === 0;
+  const cur = blink ? "_" : " ";
+  putText(0, 6, e.prompt + " " + (e.money ? "$" : "") + e.buf + cur);
+  putText(0, 7, "ENT=OK CLR=BACK");
+}
+function drawOffer() {
+  const o = state.offer;
+  let r = 1;
+  for (const ln of o.lines) center(r++, ln);
+  putText(0, 6, "1:YES", state.selN === 1);
+  putText(6, 6, "2:NO", state.selN === 2);
+  putText(0, 7, rowLR("CASH", money(state.cash)));
+}
+function drawEvent(t) {
+  let r = 1;
+  for (const ln of state.eventLines) center(r++, ln);
+  if (Math.floor(t / 420) % 2 === 0) center(7, "PRESS ENTER");
+}
+function drawCops() {
+  center(0, "OFFICER HARDASS!");
+  center(1, state.copsN + (state.copsN === 1 ? " COP IS HERE!" : " COPS ARE HERE!"));
+  putText(0, 2, "----------------");
+  putText(0, 3, rowLR("HP", String(state.health)));
+  putText(0, 4, rowLR("GUNS", String(state.guns)));
+  putText(0, 6, "1:RUN", state.selN === 1);
+  putText(0, 7, "2:FIGHT", state.selN === 2);
+}
+function drawEnd() {
+  center(0, state.died ? "BUSTED! YOU DIED" : "TIME'S UP!");
+  putText(0, 1, "----------------");
+  putText(0, 2, rowLR("CASH", money(state.cash)));
+  putText(0, 3, rowLR("BANK", money(state.bank)));
+  putText(0, 4, rowLR("DEBT", money(state.debt)));
+  putText(0, 5, rowLR("SCORE", money(score())));
+  putText(0, 6, rowLR("BEST", money(state.hi)));
+  center(7, "ENTER=NEW GAME");
+}
+function drawGraphEgg() {
+  putText(0, 0, "Y1=4SIN(X)");
+  // axes
+  for (let x = 0; x < 96; x++) px(x, 38);
+  for (let y = 10; y < 64; y += 1) if (y % 2 === 0) px(48, y);
+  for (let x = 0; x < 96; x++) {
+    const y = Math.round(38 - 22 * Math.sin((x / 96) * Math.PI * 4));
+    if (y >= 9 && y < 64) px(x, y);
+  }
+}
+
+function render(t) {
+  lastT = t;
+  clearScreen();
+  switch (state.screen) {
+    case "TITLE": drawTitle(t); break;
+    case "MAIN": drawMain(); break;
+    case "BUY": drawBuy(); break;
+    case "SELL": drawSell(); break;
+    case "JET": drawJet(); break;
+    case "PRICES": drawPrices(); break;
+    case "BAG": drawBag(); break;
+    case "SHARK": drawShark(); break;
+    case "BANK": drawBank(); break;
+    case "ENTRY": drawEntry(t); break;
+    case "OFFER": drawOffer(); break;
+    case "EVENT": drawEvent(t); break;
+    case "COPS": drawCops(); break;
+    case "WIN": case "GAMEOVER": drawEnd(); break;
+    case "GRAPHEGG": drawGraphEgg(); break;
+  }
+  // line-by-line LCD reveal transition
+  if (transitionStart >= 0) {
+    const p = (t - transitionStart) / 150;
+    if (p >= 1) transitionStart = -1;
+    else {
+      const rr = Math.max(1, Math.floor(p * ROWS) + 1);
+      ctx.fillStyle = BG;
+      ctx.fillRect(0, rr * CH, 96, 64 - rr * CH);
+    }
+  }
+}
+
+/* ---------- Game logic ---------- */
+function startEntry(cfg) {
+  state.entry = Object.assign({ buf: "", prompt: "QTY:", info: [], money: false }, cfg);
+  setScreen("ENTRY");
+}
+function eventMsg(lines, after) {
+  state.eventLines = lines;
+  state.afterEvent = after || "MAIN";
+  setScreen("EVENT");
+}
+
+function beginBuy(n) {
+  const d = DRUGS[n - 1];
+  const price = state.prices[d.key];
+  if (!price) { beepErr(); return; }
+  const max = Math.min(Math.floor(state.cash / price), state.coatMax - coatLoad());
+  if (max <= 0) { beepErr(); return; }
+  startEntry({
+    title: "BUY " + d.name, prompt: "QTY:", info: ["@ " + money(price), "CASH " + money(state.cash), "MAX " + max],
+    max, back: "BUY",
+    ok: (v) => { v = Math.min(v, max); if (v > 0) { state.cash -= v * price; state.inv[d.key] += v; } setScreen("BUY"); },
+  });
+}
+function beginSell(n) {
+  const d = DRUGS[n - 1];
+  const have = state.inv[d.key] || 0;
+  const price = state.prices[d.key];
+  if (have <= 0) { beepErr(); return; }
+  if (!price) { beepErr(); return; }
+  startEntry({
+    title: "SELL " + d.name, prompt: "QTY:", info: ["@ " + money(price), "HAVE " + have],
+    max: have, back: "SELL",
+    ok: (v) => { v = Math.min(v, have); if (v > 0) { state.inv[d.key] -= v; state.cash += v * price; } setScreen("SELL"); },
+  });
+}
+
+function travel(dest) {
+  state.loc = dest;
+  state.day++;
+  state.debt = Math.round(state.debt * 1.10); // loan shark interest
+  rollPrices();
+  if (state.day > MAX_DAYS) { endGame(false); return; }
+  fireEvent();
+}
+
+function fireEvent() {
+  const load = coatLoad();
+  if (load >= 50 && Math.random() < 0.33) { startCops(); return; }
+  if (Math.random() < 0.42) { setScreen("MAIN"); return; } // quiet day
+
+  const events = [
+    () => { state.prices.COKE = ri(80000, 140000); eventMsg(["PIGS MADE A BIG", "COKE BUST!", "COKE IS SKY-HIGH"]); },
+    () => { state.prices.HEROIN = ri(18000, 43000); eventMsg(["ADDICTS ARE BUYING", "HEROIN AT", "HUGE PRICES!"]); },
+    () => { state.prices.LUDES = ri(2, 8); eventMsg(["RIVAL DEALERS ARE", "SELLING CHEAP", "LUDES!"]); },
+    () => { state.prices.WEED = ri(80, 180); eventMsg(["WEED PRICES HAVE", "BOTTOMED OUT!"]); },
+    () => { state.prices.ACID = ri(250, 800); eventMsg(["MARKET FLOODED", "WITH CHEAP ACID!"]); },
+    () => { const lost = Math.floor(state.cash * 0.66); state.cash -= lost; eventMsg(["YOU WERE MUGGED", "IN THE SUBWAY!", "LOST " + money(lost)]); },
+    () => {
+      const space = state.coatMax - coatLoad();
+      if (space <= 0) { setScreen("MAIN"); return; }
+      const d = DRUGS[ri(0, 5)]; const q = Math.min(space, ri(1, 7)); state.inv[d.key] += q;
+      eventMsg(["FOUND DRUGS ON A", "DEAD BODY!", "GOT " + q + " " + d.name]);
+    },
+    () => { state.offer = { lines: ["WANT TO BUY A", ".44 MAGNUM?", money(400)], cost: 400, kind: "gun" }; setScreen("OFFER"); },
+    () => { state.offer = { lines: ["BUY A BIGGER", "TRENCHCOAT?", "+10 FOR " + money(200)], cost: 200, kind: "coat" }; setScreen("OFFER"); },
+  ];
+  events[ri(0, events.length - 1)]();
+}
+
+function acceptOffer() {
+  const o = state.offer;
+  if (state.cash < o.cost) { eventMsg(["NOT ENOUGH CASH!"]); return; }
+  state.cash -= o.cost;
+  if (o.kind === "gun") { state.guns++; eventMsg(["YOU'RE PACKING", "HEAT NOW!"]); }
+  else { state.coatMax += 10; eventMsg(["MORE ROOM TO", "STASH YOUR GEAR!"]); }
+}
+
+function startCops() { state.copsN = ri(1, 3); setScreen("COPS"); }
+function resolveCops(action) {
+  if (action === "RUN") {
+    if (Math.random() < 0.62) { eventMsg(["YOU LOST THE", "COPS! PHEW."]); }
+    else { const dmg = ri(8, 22); state.health -= dmg; if (state.health <= 0) { endGame(true); return; } eventMsg(["THEY CLIPPED YOU!", "-" + dmg + " HP", "...BUT YOU RAN."]); }
+  } else { // FIGHT
+    if (state.guns <= 0) {
+      const dmg = ri(12, 28); state.health -= dmg;
+      if (state.health <= 0) { endGame(true); return; }
+      eventMsg(["NO GUN! THEY", "BEAT YOU DOWN!", "-" + dmg + " HP"], "COPS");
+    } else {
+      state.copsN--;
+      if (state.copsN <= 0) { const loot = ri(1, 12) * 250; state.cash += loot; eventMsg(["YOU WON THE", "GUNFIGHT!", "GRABBED " + money(loot)]); }
+      else { const dmg = ri(6, 20); state.health -= dmg; if (state.health <= 0) { endGame(true); return; } eventMsg(["YOU DROPPED ONE!", "-" + dmg + " HP", state.copsN + " COPS LEFT!"], "COPS"); }
+    }
+  }
+}
+
+function endGame(died) {
+  state.died = died;
+  const sc = score();
+  if (sc > state.hi) { state.hi = sc; saveHi(sc); }
+  setScreen(died ? "GAMEOVER" : "WIN");
+}
+
+/* ---------- Input handling ---------- */
+function moveSel(valid, key) {
+  let i = valid.indexOf(state.selN); if (i < 0) i = 0;
+  if (key === "UP" || key === "LEFT") i = (i - 1 + valid.length) % valid.length;
+  else if (key === "DOWN" || key === "RIGHT") i = (i + 1) % valid.length;
+  state.selN = valid[i];
+}
+const isArrow = (k) => k === "UP" || k === "DOWN" || k === "LEFT" || k === "RIGHT";
+
+function mainAct(n) {
+  if (n === 1) setScreen("BUY");
+  else if (n === 2) setScreen("SELL");
+  else if (n === 3) setScreen("JET");
+  else if (n === 4) setScreen("BAG");
+  else if (n === 5) setScreen("PRICES");
+  else if (n === 6) { state.loc === BRONX ? setScreen("SHARK") : beepErr(); }
+  else if (n === 7) { state.loc === BRONX ? setScreen("BANK") : beepErr(); }
+}
+function payDebt() {
+  const max = Math.min(state.cash, state.debt);
+  if (max <= 0) { beepErr(); return; }
+  startEntry({ title: "PAY DEBT", prompt: "PAY:", money: true, info: ["DEBT " + money(state.debt), "CASH " + money(state.cash), "MAX " + money(max)], max, back: "SHARK",
+    ok: (v) => { v = Math.min(v, max); state.debt -= v; state.cash -= v; setScreen("SHARK"); } });
+}
+function borrow() {
+  const max = 5000;
+  startEntry({ title: "BORROW", prompt: "GET:", money: true, info: ["DEBT " + money(state.debt), "MAX " + money(max)], max, back: "SHARK",
+    ok: (v) => { v = Math.min(v, max); if (v > 0) { state.cash += v; state.debt += v; } setScreen("SHARK"); } });
+}
+function deposit() {
+  const max = state.cash; if (max <= 0) { beepErr(); return; }
+  startEntry({ title: "DEPOSIT", prompt: "PUT:", money: true, info: ["CASH " + money(state.cash), "MAX " + money(max)], max, back: "BANK",
+    ok: (v) => { v = Math.min(v, max); if (v > 0) { state.cash -= v; state.bank += v; } setScreen("BANK"); } });
+}
+function withdraw() {
+  const max = state.bank; if (max <= 0) { beepErr(); return; }
+  startEntry({ title: "WITHDRAW", prompt: "GET:", money: true, info: ["BANK " + money(state.bank), "MAX " + money(max)], max, back: "BANK",
+    ok: (v) => { v = Math.min(v, max); if (v > 0) { state.bank -= v; state.cash += v; } setScreen("BANK"); } });
+}
+
+function handle(key) {
+  // ----- global keys -----
+  if (key === "ON") { toggleSound(); return; }
+  if (key === "MODE") { toggleMusic(); return; }
+  if (key === "GRAPH") {
+    if (state.screen === "GRAPHEGG") setScreen(state.prevScreen);
+    else { state.prevScreen = state.screen; setScreen("GRAPHEGG"); }
+    return;
+  }
+  if (state.screen === "GRAPHEGG") { setScreen(state.prevScreen); return; }
+
+  const digit = /^[0-9]$/.test(key) ? +key : -1;
+
+  switch (state.screen) {
+    case "TITLE":
+      if (key === "ENTER") { newGame(); setScreen("MAIN"); }
+      break;
+    case "MAIN": {
+      const valid = mainOpts().map((o) => o.n);
+      if (digit >= 1) { if (valid.includes(digit)) { state.selN = digit; mainAct(digit); } else beepErr(); }
+      else if (isArrow(key)) moveSel(valid, key);
+      else if (key === "ENTER") mainAct(state.selN);
+      break;
+    }
+    case "BUY": {
+      if (digit >= 1 && digit <= 6) { state.selN = digit; beginBuy(digit); }
+      else if (isArrow(key)) moveSel([1, 2, 3, 4, 5, 6], key);
+      else if (key === "ENTER") beginBuy(state.selN);
+      else if (key === "CLEAR") setScreen("MAIN");
+      break;
+    }
+    case "SELL": {
+      if (digit >= 1 && digit <= 6) { state.selN = digit; beginSell(digit); }
+      else if (isArrow(key)) moveSel([1, 2, 3, 4, 5, 6], key);
+      else if (key === "ENTER") beginSell(state.selN);
+      else if (key === "CLEAR") setScreen("MAIN");
+      break;
+    }
+    case "JET": {
+      const go = (n) => { const dest = n - 1; if (dest === state.loc) beepErr(); else travel(dest); };
+      if (digit >= 1 && digit <= 6) { state.selN = digit; go(digit); }
+      else if (isArrow(key)) moveSel([1, 2, 3, 4, 5, 6], key);
+      else if (key === "ENTER") go(state.selN);
+      else if (key === "CLEAR") setScreen("MAIN");
+      break;
+    }
+    case "PRICES": case "BAG":
+      if (key === "ENTER" || key === "CLEAR") setScreen("MAIN");
+      break;
+    case "SHARK": {
+      if (digit === 1) payDebt(); else if (digit === 2) borrow();
+      else if (isArrow(key)) moveSel([1, 2], key);
+      else if (key === "ENTER") (state.selN === 1 ? payDebt() : borrow());
+      else if (key === "CLEAR") setScreen("MAIN");
+      break;
+    }
+    case "BANK": {
+      if (digit === 1) deposit(); else if (digit === 2) withdraw();
+      else if (isArrow(key)) moveSel([1, 2], key);
+      else if (key === "ENTER") (state.selN === 1 ? deposit() : withdraw());
+      else if (key === "CLEAR") setScreen("MAIN");
+      break;
+    }
+    case "ENTRY": {
+      const e = state.entry;
+      if (digit >= 0) { if (e.buf.length < 7) e.buf += String(digit); }
+      else if (key === "DEL") e.buf = e.buf.slice(0, -1);
+      else if (key === "UP" || key === "2ND") e.buf = String(e.max);
+      else if (key === "CLEAR") setScreen(e.back);
+      else if (key === "ENTER") { const v = parseInt(e.buf || "0", 10); e.ok(isNaN(v) ? 0 : v); }
+      break;
+    }
+    case "OFFER": {
+      if (digit === 1) acceptOffer(); else if (digit === 2) setScreen("MAIN");
+      else if (isArrow(key)) moveSel([1, 2], key);
+      else if (key === "ENTER") (state.selN === 1 ? acceptOffer() : setScreen("MAIN"));
+      else if (key === "CLEAR") setScreen("MAIN");
+      break;
+    }
+    case "EVENT":
+      if (key === "ENTER" || key === "CLEAR") setScreen(state.afterEvent);
+      break;
+    case "COPS": {
+      if (digit === 1) resolveCops("RUN"); else if (digit === 2) resolveCops("FIGHT");
+      else if (isArrow(key)) moveSel([1, 2], key);
+      else if (key === "ENTER") resolveCops(state.selN === 1 ? "RUN" : "FIGHT");
+      break;
+    }
+    case "WIN": case "GAMEOVER":
+      if (key === "ENTER") { newGame(); setScreen("TITLE"); }
+      break;
+  }
+}
+
+/* ---------- Audio ---------- */
+let actx = null;
+function ensureAudio() {
+  if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (actx && actx.state === "suspended") actx.resume();
+  if (actx && !music) initMusic();
+}
+function tone(freq, dur, gain) {
+  if (!state.sound || !actx) return;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = "square"; o.frequency.value = freq;
+  const t = actx.currentTime;
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(actx.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function blip() { tone(1500, 0.03, 0.03); }
+function beepErr() { tone(180, 0.14, 0.05); }
+function toggleSound() { state.sound = !state.sound; ensureAudio(); if (state.sound) tone(1100, 0.08, 0.04); updateMusicGain(); }
+function toggleMusic() { state.music = !state.music; ensureAudio(); updateMusicGain(); }
+
+/* ============================================================
+   AMBIENT MUSIC ENGINE  —  generative, Aphex Twin / Drukqs flavor
+   Warm detuned-saw pads on a slow emotive chord loop, a sparse
+   generative music-box melody (random walk through A-minor with
+   the odd run), soft sine bass, microtonal detuning, convolution
+   reverb + tape-style delay, and a slow breathing filter. All
+   synthesized live — no audio files.
+   ============================================================ */
+const MUSIC_VOL = 0.26;
+// A natural minor across ~2.5 octaves (A3..A5) for the melody's random walk.
+const MELODY_SCALE = [57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81];
+// Slow, emotive loop in A minor: Am9 - Fmaj9 - Cmaj7 - G6/9 (all diatonic to C/Am).
+const PROG = [
+  { pad: [57, 60, 64, 67, 71], bass: 33 }, // Am9   (A C E G B)
+  { pad: [53, 57, 60, 64, 67], bass: 29 }, // Fmaj9 (F A C E G)
+  { pad: [55, 60, 64, 67, 71], bass: 36 }, // Cmaj7 (G C E G B)
+  { pad: [55, 59, 62, 64, 69], bass: 31 }, // G6/9  (G B D E A)
+];
+const STEP = 0.27;        // seconds per melodic step
+const CHORD_STEPS = 30;   // ~8s per chord
+
+let music = null;
+let schedTimer = null, nextStepTime = 0, stepCount = 0, chordIdx = 0, melIdx = 7, runLeft = 0;
+
+function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+function makeIR(sec, decay) {
+  const rate = actx.sampleRate, len = Math.floor(rate * sec);
+  const buf = actx.createBuffer(2, len, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+  }
+  return buf;
+}
+
+function initMusic() {
+  if (music || !actx) return;
+  const out = actx.createGain(); out.gain.value = 0.0001; out.connect(actx.destination);
+  const lp = actx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 2700; lp.Q.value = 0.3; lp.connect(out);
+  const conv = actx.createConvolver(); conv.buffer = makeIR(3.6, 2.6);
+  const rev = actx.createGain(); rev.gain.value = 0.8; conv.connect(rev); rev.connect(lp);
+  const dl = actx.createDelay(1.0); dl.delayTime.value = 0.38;
+  const fb = actx.createGain(); fb.gain.value = 0.33;
+  const dlp = actx.createBiquadFilter(); dlp.type = "lowpass"; dlp.frequency.value = 1700;
+  dl.connect(dlp); dlp.connect(fb); fb.connect(dl); dl.connect(lp); dl.connect(conv);
+  const dry = actx.createGain(); dry.gain.value = 1.0; dry.connect(lp); dry.connect(conv);
+  // Percussion bus bypasses the warm master lowpass so hats stay crisp and present.
+  const perc = actx.createGain(); perc.gain.value = 1.0; perc.connect(out);
+  // pad bus with a slow "breathing" lowpass
+  const padbus = actx.createGain(); padbus.gain.value = 1.0;
+  const padlp = actx.createBiquadFilter(); padlp.type = "lowpass"; padlp.frequency.value = 1100; padlp.Q.value = 0.7;
+  padbus.connect(padlp); padlp.connect(dry); padlp.connect(conv);
+  const lfo = actx.createOscillator(); lfo.frequency.value = 0.05;
+  const lfoG = actx.createGain(); lfoG.gain.value = 600; lfo.connect(lfoG); lfoG.connect(padlp.frequency); lfo.start();
+  music = { out, dry, conv, dl, padbus, perc, noise: makeNoise(2) };
+  startScheduler();
+  updateMusicGain();
+}
+
+function makeNoise(sec) {
+  const len = Math.floor(actx.sampleRate * sec);
+  const buf = actx.createBuffer(1, len, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  return buf;
+}
+
+// Music plays during gameplay only — the title screen stays silent and the
+// ambient swells in when you enter the game. (GRAPHEGG inherits the screen it
+// was opened from, so the easter egg doesn't start music from the title.)
+function musicAudible() {
+  const scr = state.screen === "GRAPHEGG" ? state.prevScreen : state.screen;
+  return state.sound && state.music && scr !== "TITLE";
+}
+function updateMusicGain() {
+  if (!music || !actx) return;
+  const target = musicAudible() ? MUSIC_VOL : 0.0001;
+  const t = actx.currentTime;
+  music.out.gain.cancelScheduledValues(t);
+  music.out.gain.setTargetAtTime(target, t, 0.5);
+}
+
+function padChord(midis, t) {
+  if (music.currentPad) {
+    const old = music.currentPad;
+    old.g.gain.cancelScheduledValues(t);
+    old.g.gain.setValueAtTime(old.g.gain.value, t);
+    old.g.gain.linearRampToValueAtTime(0.0001, t + 3.5);
+    old.oscs.forEach((o) => o.stop(t + 3.7));
+  }
+  const g = actx.createGain(); g.gain.value = 0.0001; g.connect(music.padbus);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.06, t + 2.5);
+  const oscs = [];
+  for (const m of midis) {
+    const f = mtof(m);
+    for (let d = 0; d < 2; d++) {
+      const o = actx.createOscillator(); o.type = "sawtooth";
+      o.frequency.value = f; o.detune.value = (d ? 7 : -7) + (Math.random() * 8 - 4);
+      o.connect(g); o.start(t); oscs.push(o);
+    }
+  }
+  music.currentPad = { g, oscs };
+}
+
+function bassNote(m, t) {
+  const o = actx.createOscillator(); o.type = "sine"; o.frequency.value = mtof(m);
+  const o2 = actx.createOscillator(); o2.type = "triangle"; o2.frequency.value = mtof(m) * 1.004;
+  const g = actx.createGain(); g.gain.value = 0.0001; o.connect(g); o2.connect(g); g.connect(music.dry);
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.14, t + 1.2); g.gain.linearRampToValueAtTime(0.0001, t + 7.6);
+  o.start(t); o2.start(t); o.stop(t + 7.8); o2.stop(t + 7.8);
+}
+
+function bell(m, t) {
+  const f = mtof(m) * Math.pow(2, (Math.random() * 0.12 - 0.06) / 12); // microtonal wobble
+  const o = actx.createOscillator(); o.type = "triangle"; o.frequency.value = f;
+  const o2 = actx.createOscillator(); o2.type = "sine"; o2.frequency.value = f * 2; // octave shimmer
+  const flt = actx.createBiquadFilter(); flt.type = "lowpass"; flt.frequency.value = 3800;
+  const g = actx.createGain(), g2 = actx.createGain();
+  g.gain.value = 0.0001; g2.gain.value = 0.0001;
+  o.connect(g); o2.connect(g2); g.connect(flt); g2.connect(flt);
+  flt.connect(music.dry); flt.connect(music.dl);
+  const send = actx.createGain(); send.gain.value = 0.65; flt.connect(send); send.connect(music.conv);
+  const dec = 0.7 + Math.random() * 0.9;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.14, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dec);
+  g2.gain.setValueAtTime(0.0001, t); g2.gain.exponentialRampToValueAtTime(0.05, t + 0.008); g2.gain.exponentialRampToValueAtTime(0.0001, t + dec * 0.7);
+  o.start(t); o2.start(t); o.stop(t + dec + 0.1); o2.stop(t + dec + 0.1);
+}
+
+/* ---- Light, downtempo percussion (soft kick, brushy snare, ticky hats) ---- */
+function kick(t, v) {
+  v = v || 1;
+  const o = actx.createOscillator(); o.type = "sine";
+  o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.09);
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.42 * v, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+  o.connect(g); g.connect(music.perc); o.start(t); o.stop(t + 0.28);
+}
+function hat(t, v) {
+  const s = actx.createBufferSource(); s.buffer = music.noise; s.playbackRate.value = 1 + Math.random() * 0.2;
+  const hp = actx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 7500;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+  s.connect(hp); hp.connect(g); g.connect(music.perc);
+  const sd = actx.createGain(); sd.gain.value = 0.3; g.connect(sd); sd.connect(music.conv);
+  s.start(t, Math.random() * 1.5); s.stop(t + 0.07);
+}
+function snare(t) {
+  const s = actx.createBufferSource(); s.buffer = music.noise;
+  const bp = actx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1900; bp.Q.value = 0.7;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+  s.connect(bp); bp.connect(g); g.connect(music.perc);
+  const sd = actx.createGain(); sd.gain.value = 0.5; g.connect(sd); sd.connect(music.conv);
+  s.start(t, Math.random()); s.stop(t + 0.17);
+  const o = actx.createOscillator(); o.type = "triangle"; o.frequency.value = 180;
+  const og = actx.createGain();
+  og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.13, t + 0.004); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.10);
+  o.connect(og); og.connect(music.perc); o.start(t); o.stop(t + 0.12);
+}
+// One soft, swung, half-time-ish bar per 8 steps, humanized with breathing dropouts.
+function drums(s, t) {
+  const b = s % 8;
+  if (b === 0) kick(t, 1);
+  if (b === 6 && Math.random() < 0.4) kick(t, 0.55);          // syncopated ghost kick
+  if (b === 4) snare(t);                                       // backbeat
+  const onHat = (b % 2 === 0) ? 0.85 : 0.4;                    // quarters solid, offbeats ghosted
+  if (Math.random() < onHat) {
+    const swing = (b % 2 === 1) ? 0.045 : 0;
+    const vel = (b % 4 === 0 ? 0.075 : 0.05) * (0.7 + Math.random() * 0.5);
+    hat(t + swing, vel);
+  }
+  if (b === 7 && Math.random() < 0.3) hat(t + STEP / 2, 0.035); // occasional 16th flourish
+}
+
+function startScheduler() {
+  if (schedTimer) return;
+  nextStepTime = actx.currentTime + 0.1; stepCount = 0; chordIdx = 0;
+  schedTimer = setInterval(() => {
+    if (!actx) return;
+    while (nextStepTime < actx.currentTime + 0.3) { onStep(stepCount, nextStepTime); stepCount++; nextStepTime += STEP; }
+  }, 60);
+}
+
+function onStep(s, t) {
+  if (s % CHORD_STEPS === 0) {
+    const ch = PROG[chordIdx % PROG.length];
+    padChord(ch.pad, t); bassNote(ch.bass, t); chordIdx++;
+  }
+  if (!musicAudible()) return; // melody + drums only when audible (saves voices)
+  drums(s, t);
+  if (runLeft > 0) {                          // continue a music-box run
+    melIdx = clamp(melIdx + (Math.random() < 0.72 ? 1 : -1), 2, 14);
+    bell(MELODY_SCALE[melIdx] + 12, t); runLeft--;
+    return;
+  }
+  const beat = s % CHORD_STEPS;
+  let p = beat % 4 === 0 ? 0.30 : 0.14;       // looser pulse on "beats"
+  if (Math.random() < p) {
+    if (Math.random() < 0.12) runLeft = 2 + Math.floor(Math.random() * 4);
+    let mv = Math.random() < 0.6 ? (Math.random() < 0.5 ? 1 : -1) : (Math.random() < 0.5 ? 2 : -2);
+    if (Math.random() < 0.12) mv += Math.random() < 0.5 ? 3 : -3; // occasional leap
+    melIdx = clamp(melIdx + mv, 2, 14);
+    bell(MELODY_SCALE[melIdx] + (Math.random() < 0.3 ? 12 : 0), t + Math.random() * 0.02);
+  }
+}
+
+function dispatch(key) { ensureAudio(); blip(); handle(key); }
+
+/* ---------- Build the keypad ---------- */
+const keyEls = {};
+function pressVisual(k) { const el = keyEls[k]; if (el) { el.classList.add("pressed"); setTimeout(() => el.classList.remove("pressed"), 100); } }
+
+function mkKey(d) {
+  const cell = document.createElement("div"); cell.className = "cell";
+  const over = document.createElement("div"); over.className = "over";
+  const s = document.createElement("span"); s.className = "sec"; s.innerHTML = d.sec || "";
+  const a = document.createElement("span"); a.className = "alp"; a.innerHTML = d.alp || "";
+  over.append(s, a); cell.append(over);
+  const b = document.createElement("button"); b.className = "key " + (d.cls || ""); b.innerHTML = d.l;
+  if (d.key) { b.dataset.key = d.key; keyEls[d.key] = b; }
+  cell.append(b);
+  return cell;
+}
+
+const GRAPH_KEYS = [
+  { l: "Y=", sec: "STAT PLOT", f: "F1" },
+  { l: "WINDOW", sec: "TBLSET", f: "F2" },
+  { l: "ZOOM", sec: "FORMAT", f: "F3" },
+  { l: "TRACE", sec: "CALC", f: "F4" },
+  { l: "GRAPH", sec: "TABLE", f: "F5", key: "GRAPH" },
+];
+const TOP = [
+  { l: "2nd", cls: "k-2nd", key: "2ND", r: 1, c: 1 },
+  { l: "MODE", sec: "QUIT", key: "MODE", r: 1, c: 2 },
+  { l: "DEL", sec: "INS", key: "DEL", r: 1, c: 3 },
+  { l: "ALPHA", sec: "A-LOCK", cls: "k-alpha", r: 2, c: 1 },
+  { l: "X,T,&Theta;,<i>n</i>", sec: "LINK", r: 2, c: 2 },
+  { l: "STAT", sec: "LIST", r: 2, c: 3 },
+];
+const ROWSK = [
+  [{ l: "MATH", sec: "TEST", alp: "A" }, { l: "APPS", sec: "ANGLE", alp: "B" }, { l: "PRGM", sec: "DRAW", alp: "C" }, { l: "VARS", sec: "DISTR" }, { l: "CLEAR", cls: "k-clear", key: "CLEAR" }],
+  [{ l: "x<sup>-1</sup>", sec: "MATRX", alp: "D" }, { l: "SIN", sec: "SIN<sup>-1</sup>", alp: "E" }, { l: "COS", sec: "COS<sup>-1</sup>", alp: "F" }, { l: "TAN", sec: "TAN<sup>-1</sup>", alp: "G" }, { l: "^", sec: "&pi;", alp: "H" }],
+  [{ l: "x<sup>2</sup>", sec: "&radic;&nbsp;", alp: "I" }, { l: ",", sec: "EE", alp: "J" }, { l: "(", sec: "{", alp: "K" }, { l: ")", sec: "}", alp: "L" }, { l: "&divide;", sec: "e", alp: "M", cls: "k-op" }],
+  [{ l: "LOG", sec: "10<sup>x</sup>", alp: "N" }, { l: "7", cls: "k-num", sec: "u", alp: "O", key: "7" }, { l: "8", cls: "k-num", sec: "v", alp: "P", key: "8" }, { l: "9", cls: "k-num", sec: "w", alp: "Q", key: "9" }, { l: "&times;", sec: "[", alp: "R", cls: "k-op" }],
+  [{ l: "LN", sec: "e<sup>x</sup>", alp: "S" }, { l: "4", cls: "k-num", sec: "L4", alp: "T", key: "4" }, { l: "5", cls: "k-num", sec: "L5", alp: "U", key: "5" }, { l: "6", cls: "k-num", sec: "L6", alp: "V", key: "6" }, { l: "&minus;", sec: "]", alp: "W", cls: "k-op" }],
+  [{ l: "STO&#9658;", sec: "RCL", alp: "X" }, { l: "1", cls: "k-num", sec: "L1", alp: "Y", key: "1" }, { l: "2", cls: "k-num", sec: "L2", alp: "Z", key: "2" }, { l: "3", cls: "k-num", sec: "L3", alp: "&Theta;", key: "3" }, { l: "+", sec: "MEM", alp: "&quot;", cls: "k-op" }],
+  [{ l: "ON", sec: "OFF", key: "ON" }, { l: "0", cls: "k-num", sec: "CATALOG", key: "0" }, { l: ".", cls: "k-num", sec: "i", alp: ":" }, { l: "(&minus;)", sec: "ANS", alp: "?" }, { l: "ENTER", sec: "SOLVE", cls: "k-enter", key: "ENTER" }],
+];
+
+(function buildKeypad() {
+  const fk = document.getElementById("fkeys");
+  for (const g of GRAPH_KEYS) {
+    const cell = document.createElement("div"); cell.className = "cell";
+    const over = document.createElement("div"); over.className = "over";
+    const s = document.createElement("span"); s.className = "sec"; s.innerHTML = g.sec;
+    const a = document.createElement("span"); a.className = "alp"; a.style.color = "#c5c9cf"; a.textContent = g.f;
+    over.append(s, a); cell.append(over);
+    const b = document.createElement("button"); b.className = "key k-graph"; b.textContent = g.l;
+    if (g.key) { b.dataset.key = g.key; keyEls[g.key] = b; }
+    cell.append(b); fk.append(cell);
+  }
+  const kp = document.getElementById("keypad");
+  for (const d of TOP) { const cell = mkKey(d); cell.style.gridRow = String(d.r); cell.style.gridColumn = String(d.c); kp.append(cell); }
+  // D-pad
+  const dcell = document.createElement("div"); dcell.className = "cell dpad";
+  dcell.style.gridRow = "1 / 3"; dcell.style.gridColumn = "4 / 6";
+  const pad = document.createElement("div"); pad.className = "pad";
+  for (const [dir, k] of [["up", "UP"], ["down", "DOWN"], ["left", "LEFT"], ["right", "RIGHT"]]) {
+    const ab = document.createElement("button"); ab.className = dir; ab.dataset.key = k; keyEls[k] = ab; pad.append(ab);
+  }
+  dcell.append(pad); kp.append(dcell);
+  // main rows (grid rows 3..9)
+  ROWSK.forEach((row, ri2) => row.forEach((d, ci) => {
+    const cell = mkKey(d); cell.style.gridRow = String(3 + ri2); cell.style.gridColumn = String(1 + ci); kp.append(cell);
+  }));
+})();
+
+/* ---------- Wire input ---------- */
+document.getElementById("calc").addEventListener("click", (e) => {
+  const b = /** @type {HTMLElement} */ (e.target).closest("button[data-key]");
+  if (!b) return;
+  const k = /** @type {HTMLElement} */ (b).dataset.key;
+  pressVisual(k); dispatch(k);
+});
+const KB = { "Enter": "ENTER", " ": "ENTER", "Escape": "CLEAR", "Backspace": "DEL", "Delete": "DEL", "ArrowUp": "UP", "ArrowDown": "DOWN", "ArrowLeft": "LEFT", "ArrowRight": "RIGHT" };
+window.addEventListener("keydown", (e) => {
+  let k = null;
+  if (/^[0-9]$/.test(e.key)) k = e.key;
+  else if (KB[e.key]) k = KB[e.key];
+  else if (e.key === "g" || e.key === "G") k = "GRAPH";
+  else if (e.key === "m" || e.key === "M") k = "ON";
+  else if (e.key === "n" || e.key === "N") k = "MODE";
+  if (k) { e.preventDefault(); pressVisual(k); dispatch(k); }
+});
+
+/* ---------- Crisp integer-scaled LCD ---------- */
+// The framebuffer is exactly 96x64. To keep pixels (and the 1px gaps between
+// text rows) sharp and even, snap the displayed canvas to an integer multiple
+// of the native resolution that fits the LCD area.
+function fitCanvas() {
+  const lcd = canvas.parentElement;
+  if (!lcd) return;
+  const r = lcd.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const k = Math.max(1, Math.floor(Math.min((r.width * 0.95) / 96, (r.height * 0.95) / 64)));
+  canvas.style.width = 96 * k + "px";
+  canvas.style.height = 64 * k + "px";
+}
+window.addEventListener("resize", fitCanvas);
+
+/* ---------- Boot ---------- */
+// Start the ambient music automatically on the very first user interaction of
+// any kind (click/tap/keypress anywhere) — browsers block Web Audio until then.
+function kickAudio() {
+  ensureAudio();
+  for (const ev of ["pointerdown", "keydown", "touchstart"]) window.removeEventListener(ev, kickAudio);
+}
+for (const ev of ["pointerdown", "keydown", "touchstart"]) window.addEventListener(ev, kickAudio);
+
+newGame();
+setScreen("TITLE");
+fitCanvas();
+setTimeout(fitCanvas, 60);
+function frame(t) { render(t); requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
