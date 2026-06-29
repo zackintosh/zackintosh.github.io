@@ -731,7 +731,7 @@
     try{ const h=location.hash||'';
       if(h.indexOf('#test=')===0){
         const prevCur=localStorage.getItem('blix.cur');
-        const lv=JSON.parse(decodeURIComponent(atob(h.slice(6))));
+        const lv=JSON.parse(decodeURIComponent(escape(atob(h.slice(6)))));
         if(lv && Array.isArray(lv.o)){ lv.test=true; LEVELS.push(lv); loadLevel(LEVELS.length-1);
           if(prevCur!==null) localStorage.setItem('blix.cur',prevCur); else localStorage.removeItem('blix.cur'); }
       } }catch(e){}

@@ -643,7 +643,9 @@
   function launchPlay(){
     const lv=buildLevel();
     if(!lv.o.length){ flash('Add some pieces first.'); return; }
-    lastPayload=btoa(encodeURIComponent(JSON.stringify(lv)));
+    // UTF-8-safe base64: unescape() collapses the %XX bytes so the payload stays compact
+    // (without it, every JSON quote/bracket/comma is tripled before base64 — ~2x bigger).
+    lastPayload=btoa(unescape(encodeURIComponent(JSON.stringify(lv))));
     playFrame.src=frameUrl(lastPayload);
     playOv.hidden=false;
     playFrame.focus();
