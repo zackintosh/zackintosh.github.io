@@ -66,6 +66,7 @@
       <button id="levelsBtn">Password</button>
       <button id="helpBtn">❔ Help</button>
       <button id="soundBtn">🔇 Sound</button>
+      <button id="copyBtn" style="display:none">⧉ Copy Level Data</button>
     </div>
   </div>
   <div id="ov"></div>
@@ -634,7 +635,7 @@
   const startBtn=document.getElementById('startBtn'), pauseBtn=document.getElementById('pauseBtn');
   const resetBtn=document.getElementById('resetBtn');
   const levelsBtn=document.getElementById('levelsBtn'), soundBtn=document.getElementById('soundBtn'), ov=document.getElementById('ov');
-  const helpBtn=document.getElementById('helpBtn');
+  const helpBtn=document.getElementById('helpBtn'), copyBtn=document.getElementById('copyBtn');
   function secsLeft(){ return Math.max(0, Math.ceil((13*G.timerSpeed - G.timerVar)*FRAME_MS/1000)); }
   // display label for the current level: "TEST" for a level injected via the editor's #test= hook, else its number
   function levelLabel(){ const lv=LEVELS[G.level]; return (lv && lv.test) ? 'TEST' : (G.level+1); }
@@ -653,6 +654,7 @@
     soundBtn.classList.toggle('active',G.sound); soundBtn.textContent=G.sound?'🔊 Sound':'🔇 Sound';
     const [txt,col]=statusText(); statusEl.textContent=txt; statusEl.style.color=col||'#e8ecf5';
     hintEl.textContent = (playing && LEVELS[G.level] && LEVELS[G.level].pw) ? `Password: ${LEVELS[G.level].pw}` : '';
+    copyBtn.style.display = (LEVELS[G.level] && LEVELS[G.level].test) ? '' : 'none';   // only while play-testing an editor #test= level
     renderOverlay();
   }
   const HOW_ITEMS=[
@@ -709,6 +711,20 @@
   levelsBtn.addEventListener('click',()=>{ Sound.init(); if(G.state==='playing') togglePause(); G.showCode=true; updateStatus(); });
   helpBtn.addEventListener('click',()=>{ Sound.init(); if(G.state==='playing') togglePause(); G.showHelp=true; updateStatus(); });
   soundBtn.addEventListener('click',()=>setSound(!G.sound));
+  copyBtn.addEventListener('click',async()=>{                       // copy the loaded level back out as compact JSON
+    const lv=LEVELS[G.level]; if(!lv) return;
+    const {test,...data}=lv;                                        // strip the internal play-test flag
+    const json=JSON.stringify(data);
+    let ok=false;
+    try{ await navigator.clipboard.writeText(json); ok=true; }catch(e){}
+    if(!ok){                                                        // clipboard API blocked (iframe/file://) — fall back to execCommand
+      try{ const ta=document.createElement('textarea'); ta.value=json; ta.style.position='fixed'; ta.style.opacity='0';
+           document.body.appendChild(ta); ta.select(); ok=document.execCommand('copy'); document.body.removeChild(ta); }catch(e){}
+    }
+    copyBtn.textContent = ok ? '✓ Copied!' : '⧉ Copy failed';
+    setTimeout(()=>{ copyBtn.textContent='⧉ Copy Level Data'; },1300);
+    if(!ok) prompt('Copy the level data:', json);                   // last resort: show it for manual copy
+  });
 
   /* ============================ Main loop ============================ */
   let lastNow=performance.now(), acc=0;
