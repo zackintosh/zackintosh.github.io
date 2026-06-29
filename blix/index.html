@@ -543,8 +543,8 @@
     if(G.introT && NOW-G.introT<1200){ const a=NOW-G.introT, fade=a<700?1:1-(a-700)/500;
       ctx.save(); ctx.globalAlpha=Math.max(0,fade); ctx.textAlign='center'; ctx.fillStyle=COL.blue;
       ctx.font='700 '+Math.round(G.cell*0.95)+'px -apple-system,Segoe UI,Roboto'; ctx.lineWidth=Math.max(2,G.cell*0.08);
-      ctx.strokeStyle='#ffffff'; ctx.strokeText('Level '+(G.level+1), bx+bw/2, by+bh/2);
-      ctx.fillText('Level '+(G.level+1), bx+bw/2, by+bh/2); ctx.restore(); }
+      ctx.strokeStyle='#ffffff'; ctx.strokeText('Level '+levelLabel(), bx+bw/2, by+bh/2);
+      ctx.fillText('Level '+levelLabel(), bx+bw/2, by+bh/2); ctx.restore(); }
   }
   function drawRing(){
     const p=Math.min(1,ringFrac()); const step=Math.min(13,Math.floor(p*13)); if(step<=0) return;
@@ -636,10 +636,12 @@
   const levelsBtn=document.getElementById('levelsBtn'), soundBtn=document.getElementById('soundBtn'), ov=document.getElementById('ov');
   const helpBtn=document.getElementById('helpBtn');
   function secsLeft(){ return Math.max(0, Math.ceil((13*G.timerSpeed - G.timerVar)*FRAME_MS/1000)); }
+  // display label for the current level: "TEST" for a level injected via the editor's #test= hook, else its number
+  function levelLabel(){ const lv=LEVELS[G.level]; return (lv && lv.test) ? 'TEST' : (G.level+1); }
   function statusText(){
     const s=G.state;
     if(s==='menu') return ['Press Start',null];
-    if(s==='playing'||s==='paused'){ let t=`Level ${G.level+1} · Balls ${G.ballsLeft} · ${secsLeft()}s`;
+    if(s==='playing'||s==='paused'){ let t=`Level ${levelLabel()} · Balls ${G.ballsLeft} · ${secsLeft()}s`;
       if(s==='paused') t+=' · PAUSED'; return [t, ringFrac()>0.8?'var(--danger)':null]; }
     if(s==='win') return ['Cleared!','var(--bump)'];
     if(s==='lose') return ['The ring closed in','var(--danger)']; return ['',null];
@@ -686,7 +688,7 @@
     } else if(s==='win'){ const nx=G.level+1;
       const codeLine=(LEVELS[nx]&&LEVELS[nx].pw)?`<p class="code">Password for level ${nx+1}: <b>${LEVELS[nx].pw}</b></p>`:'';
       const bonusLine=G.winBonus>0?`<p>Time Bonus: <b>+${G.winBonus}</b></p>`:'';
-      html=`<div class="panel"><h2>Level ${G.level+1} Cleared!</h2>${bonusLine}${codeLine}<div class="row"><button data-act="next">Next Level →</button></div></div>`;
+      html=`<div class="panel"><h2>Level ${levelLabel()} Cleared!</h2>${bonusLine}${codeLine}<div class="row"><button data-act="next">Next Level →</button></div></div>`;
     } else if(s==='lose'){ html=`<div class="panel"><h2>Out of Time</h2><p>The ring reached the center. Route every ball into a cup before it closes.</p>
       <div class="row"><button data-act="retry">Retry</button><button data-act="menu">Menu</button></div></div>`; }
     if(html){ ov.innerHTML=html; ov.style.display='grid'; const ci=document.getElementById('codeInput'); if(ci) ci.focus(); }
@@ -724,6 +726,15 @@
       const sc=parseInt(localStorage.getItem('blix.score')||'0',10); if(!isNaN(sc)) G.score=sc;
       const ss=localStorage.getItem('blix.sound'); if(ss!==null) G.sound=ss==='1'; }catch(e){}
     resize(); G.state='menu'; updateStatus(); requestAnimationFrame(frame);
+    // Level-editor bridge: editor.html opens index.html#test=<base64 level> to play-test a level.
+    // Push it as a one-off level and load it, then restore blix.cur so saved progress is untouched.
+    try{ const h=location.hash||'';
+      if(h.indexOf('#test=')===0){
+        const prevCur=localStorage.getItem('blix.cur');
+        const lv=JSON.parse(decodeURIComponent(atob(h.slice(6))));
+        if(lv && Array.isArray(lv.o)){ lv.test=true; LEVELS.push(lv); loadLevel(LEVELS.length-1);
+          if(prevCur!==null) localStorage.setItem('blix.cur',prevCur); else localStorage.removeItem('blix.cur'); }
+      } }catch(e){}
     // Autoplay policy: the audio engine can only start inside a user gesture,
     // so arm a one-time listener that boots it on first interaction when sound is on.
     const armAudio=()=>{ if(G.sound) Sound.init();

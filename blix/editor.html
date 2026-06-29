@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>BLiX Level Editor</title>
+<style>
+  :root{
+    --bg:#171522; --bg2:#211d30; --panel:#1d1a2a; --line:#332d44;
+    --ink:#e8ecf5; --dim:#9b93ad; --accent:#3a5bd0; --green:#3fae53; --gold:#f2a81d; --danger:#d83a4a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(1200px 600px at 50% -10%, #241f36 0%, var(--bg) 60%);
+    color:var(--ink); font:14px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{display:flex;align-items:baseline;gap:12px;padding:14px 20px 6px}
+  header h1{margin:0;font-size:20px;letter-spacing:1px}
+  header h1 .x{color:#2fd4d4}
+  header .sub{color:var(--dim);font-size:12px}
+  .wrap{display:flex;gap:18px;align-items:flex-start;padding:10px 20px 28px;flex-wrap:wrap}
+  .boardbox{flex:1 1 auto;min-width:0}
+  canvas{display:block;border-radius:10px;background:#0e0c16;touch-action:none;max-width:100%;height:auto}
+  .hintline{margin-top:8px;color:var(--dim);font-size:12px;min-height:1.2em}
+  .hintline .warn{color:var(--gold)}
+  .panel{flex:0 0 360px;min-width:300px;max-width:420px;display:flex;flex-direction:column;gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .card h2{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--dim);font-weight:700}
+  .tools{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  button{
+    font:inherit;color:var(--ink);background:var(--bg2);border:1px solid var(--line);
+    border-radius:8px;padding:8px 10px;cursor:pointer;transition:.12s;
+  }
+  button:hover{border-color:#5a5170}
+  button.sel{background:var(--accent);border-color:#6f8cff;color:#fff}
+  .seg{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .seg button{padding:6px 9px;font-size:13px}
+  .seg .lab{align-self:center;color:var(--dim);font-size:12px;margin-right:2px;min-width:42px}
+  .row{display:flex;align-items:center;gap:8px;margin:8px 0}
+  .row label{color:var(--dim);min-width:78px}
+  input[type=number],input[type=text],select{
+    font:inherit;color:var(--ink);background:#15131f;border:1px solid var(--line);
+    border-radius:7px;padding:6px 8px;width:100%;
+  }
+  input[type=range]{width:100%}
+  textarea{
+    width:100%;min-height:96px;resize:vertical;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;
+    color:#cfe1ff;background:#10131f;border:1px solid var(--line);border-radius:8px;padding:8px;
+  }
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  .btns button{flex:1 1 auto}
+  .btns .primary{background:var(--green);border-color:#5fcf73;color:#06210d;font-weight:700}
+  .btns .ghost{background:transparent}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;color:var(--dim);font-size:12px;margin-top:6px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .stat{display:flex;gap:14px;color:var(--dim);font-size:12px;flex-wrap:wrap}
+  .stat b{color:var(--ink)}
+  .paramrow{display:none}
+  .paramrow.on{display:block}
+  .muted{color:var(--dim);font-size:12px}
+  kbd{background:#15131f;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font:12px ui-monospace,monospace}
+  /* embedded play-test overlay */
+  .player{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(8,7,14,.78);backdrop-filter:blur(3px)}
+  .player[hidden]{display:none}
+  .player-card{display:flex;flex-direction:column;height:75vh;width:min(90vw,60vh);background:#0e0c16;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+  .player-bar{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--panel);border-bottom:1px solid var(--line);font-size:13px}
+  .player-bar .title{font-weight:700;letter-spacing:.5px}
+  .player-bar .spacer{flex:1}
+  .player-bar button{padding:5px 10px;font-size:12px}
+  .player-card iframe{flex:1;border:0;width:100%;background:#0e0c16}
+</style>
+</head>
+<body>
+<header>
+  <h1>BLi<span class="x">X</span> &nbsp;Level Editor</h1>
+  <span class="sub">build a level &middot; ▶ test it in the real game</span>
+</header>
+
+<div class="wrap">
+  <div class="boardbox">
+    <canvas id="board"></canvas>
+    <div class="hintline" id="hint">Pick a tool, then click the board. Right-click to erase.</div>
+  </div>
+
+  <div class="panel">
+    <div class="card">
+      <h2>Tools</h2>
+      <div class="tools">
+        <button class="tool sel" data-tool="ball">● Ball</button>
+        <button class="tool" data-tool="cup">⊔ Cup</button>
+        <button class="tool" data-tool="block">▪ Block</button>
+        <button class="tool" data-tool="item">◈ Item</button>
+        <button class="tool" data-tool="bumper">∟ Bumper</button>
+        <button class="tool" data-tool="erase">⌫ Erase</button>
+      </div>
+
+      <!-- Ball params -->
+      <div class="paramrow on" data-for="ball">
+        <div class="seg"><span class="lab">Dir</span>
+          <button class="p-dir sel" data-dir="u">↑</button>
+          <button class="p-dir" data-dir="d">↓</button>
+          <button class="p-dir" data-dir="l">←</button>
+          <button class="p-dir" data-dir="r">→</button>
+        </div>
+        <div class="seg"><span class="lab">Speed</span>
+          <button class="p-spd sel" data-spd="1">1</button>
+          <button class="p-spd" data-spd="2">2</button>
+          <button class="p-spd" data-spd="3">3</button>
+          <button class="p-spd" data-spd="6">6</button>
+        </div>
+      </div>
+
+      <!-- Cup params -->
+      <div class="paramrow" data-for="cup">
+        <div class="seg"><span class="lab">Opening</span>
+          <button class="p-face sel" data-face="u">↑</button>
+          <button class="p-face" data-face="r">→</button>
+          <button class="p-face" data-face="d">↓</button>
+          <button class="p-face" data-face="l">←</button>
+        </div>
+        <div class="seg"><span class="lab">Spin</span>
+          <button class="p-beh sel" data-beh="0">Static</button>
+          <button class="p-beh" data-beh="1">CW ↻</button>
+          <button class="p-beh" data-beh="2">CCW ↺</button>
+        </div>
+      </div>
+
+      <!-- Block params -->
+      <div class="paramrow" data-for="block">
+        <div class="seg"><span class="lab">Type</span>
+          <button class="p-br sel" data-br="0">Solid</button>
+          <button class="p-br" data-br="1">Breakable</button>
+        </div>
+      </div>
+
+      <!-- Item params -->
+      <div class="paramrow" data-for="item">
+        <div class="seg"><span class="lab">Power</span>
+          <button class="p-it sel" data-it="stik">S Stick</button>
+          <button class="p-it" data-it="tele">◈ Tele</button>
+          <button class="p-it" data-it="invs">? Invis</button>
+          <button class="p-it" data-it="redi">⟳ Redir</button>
+          <button class="p-it" data-it="spdu">» Spd+</button>
+          <button class="p-it" data-it="spdd">« Spd−</button>
+        </div>
+      </div>
+
+      <!-- Bumper params -->
+      <div class="paramrow" data-for="bumper">
+        <div class="seg"><span class="lab">Kind</span>
+          <button class="p-perm sel" data-perm="1">Permanent</button>
+          <button class="p-perm" data-perm="0">Removable</button>
+        </div>
+        <p class="muted" style="margin:8px 0 0">Each square allows only its two diagonal corners (the dotted brackets). The corner snaps to where you click — the upper triangle places the top corner, the lower triangle the bottom one.</p>
+        <div class="legend">
+          <span><i style="background:#3a5bd0"></i>Permanent (dev)</span>
+          <span><i style="background:#3fae53"></i>Removable (player)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Level Settings</h2>
+      <div class="row"><label for="t">Ring speed (t)</label>
+        <input type="number" id="t" min="20" max="600" step="5" value="125" style="max-width:90px">
+        <span class="muted" id="ttip">slower&nbsp;↔&nbsp;faster</span>
+      </div>
+      <div class="row"><label>Edges</label>
+        <div class="seg" style="margin:0">
+          <button class="p-w sel" data-w="0">Walls</button>
+          <button class="p-w" data-w="1">Astro (wrap)</button>
+        </div>
+      </div>
+      <div class="row"><label for="pw">Password</label>
+        <input type="text" id="pw" placeholder="(optional)" maxlength="12" style="max-width:140px">
+      </div>
+      <div class="row"><label for="tint">Board tint</label>
+        <select id="tint" style="max-width:160px">
+          <option value="0">Pink</option>
+          <option value="1">Olive</option>
+          <option value="2">Gray</option>
+          <option value="3">Rose</option>
+          <option value="4">Periwinkle</option>
+        </select>
+      </div>
+      <div class="stat" id="stats"></div>
+    </div>
+
+    <div class="card">
+      <h2>Level Data</h2>
+      <textarea id="json" spellcheck="false"></textarea>
+      <div class="btns" style="margin-top:10px">
+        <button class="primary" id="test">▶ Test in game</button>
+        <button id="copy">⧉ Copy</button>
+        <button id="import">⇪ Import</button>
+      </div>
+      <div class="btns" style="margin-top:8px">
+        <button class="ghost" id="clear">Clear board</button>
+        <select id="tpl" style="flex:1 1 auto">
+          <option value="">Starter templates…</option>
+          <option value="basic">Straight shot</option>
+          <option value="bounce">Corner bounce</option>
+          <option value="rain">Ball rain</option>
+        </select>
+      </div>
+      <div class="muted" style="margin-top:8px">
+        Shortcuts: <kbd>B</kbd>all <kbd>C</kbd>up bloc<kbd>K</kbd> <kbd>I</kbd>tem bu<kbd>M</kbd>per <kbd>E</kbd>rase &middot; arrows set ball/cup direction
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- embedded play-test: index.html (the BLiX game) runs right here in an iframe when you hit Test -->
+<div class="player" id="player" hidden>
+  <div class="player-card">
+    <div class="player-bar">
+      <span class="title">▶ Play-test</span>
+      <span class="spacer"></span>
+      <button id="playReload" title="Reload this level">↻ Restart</button>
+      <button id="playPop" title="Open in a new tab">↗ Tab</button>
+      <button id="playClose" title="Back to editor (Esc)">✕ Close</button>
+    </div>
+    <iframe id="playFrame" title="BLiX play-test" allow="autoplay"></iframe>
+  </div>
+</div>
+
+<script>
+(()=>{
+  'use strict';
+  /* ===================== constants ported from blix.html ===================== */
+  const COLS=13, ROWS=13, U=24;                                   // 13×13 cells, 24 units/cell
+  const CUPFLASH_MS=500;
+  const SHAPE_CORNER={ LT:'tl', RT:'tr', LB:'bl', RB:'br' };
+  const COL={ blue:'#3a5bd0', blueEdge:'#e6ecff', bumpPlayer:'#3fae53', bumpDev:'#3a5bd0',
+              danger:'#d83a4a', cupFlash:'#f2a81d' };
+  const FIELDS=['#eba0bd','#a0bd23','#b1b3b7','#c28a7e','#9a9aec'];
+  const BALLCOL=['#3a5bd0','#4a6be0','#3a7bd0','#4a5bc0','#2f5bd8','#4060d8','#3a66c8'];
+  const mixW=(hex,t)=>{ const n=parseInt(hex.slice(1),16),r=n>>16,g=(n>>8)&255,b=n&255,m=v=>Math.round(v+(255-v)*t); return `rgb(${m(r)},${m(g)},${m(b)})`; };
+  const ITEMS=['stik','tele','invs','redi','spdu','spdd'];
+  const NOW=0;                                                    // editor never flashes; keep drawCup/drawBall happy
+
+  /* ===================== layout / canvas ===================== */
+  const cv=document.getElementById('board'), ctx=cv.getContext('2d');
+  const PAD=18;                                                   // room for the rounded outer frame
+  const G={ cell:40, originX:PAD, originY:PAD, level:0, hover:null };
+  let cvW=0, cvH=0;
+
+  function layout(){
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    const box=document.querySelector('.boardbox');
+    // grow the board to fill the column, but keep the (square) board within the viewport height
+    const availW=Math.max(180,(box.clientWidth||560)-2*PAD);
+    const top=box.getBoundingClientRect().top;
+    const availH=Math.max(180, window.innerHeight-top-2*PAD-56);   // leave room for the hint line + margin
+    G.cell=Math.max(24, Math.min(80, Math.floor(availW/COLS), Math.floor(availH/ROWS)));
+    cvW=G.cell*COLS+2*PAD; cvH=cvW;
+    G.originX=PAD; G.originY=PAD;
+    cv.width=Math.round(cvW*dpr); cv.height=Math.round(cvH*dpr);
+    cv.style.width=cvW+'px'; cv.style.height=cvH+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    fieldPattern=null; tileCell=0;                                // force field-tile rebuild at new cell size
+    render();
+  }
+
+  const SCx=u=>G.originX+u*(G.cell/U);
+  const SCy=u=>G.originY+u*(G.cell/U);
+  const fieldCol=()=>FIELDS[G.level%FIELDS.length];
+  function rrect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function pickCell(px,py){ const c=Math.floor((px-G.originX)/G.cell), r=Math.floor((py-G.originY)/G.cell);
+    return (c>=0&&c<COLS&&r>=0&&r<ROWS)?[c+1,r+1]:null; }                 // returns 1-based gx,gy (null if off-board)
+
+  /* ===================== field texture (ported verbatim from blix.html) ===================== */
+  let fieldPattern=null, tileCell=0, tileField='', tileDpr=0;
+  function buildFieldTile(){
+    const fc=fieldCol(), D=Math.min(window.devicePixelRatio||1,2);
+    if(G.cell===tileCell && fc===tileField && D===tileDpr && fieldPattern) return;
+    tileCell=G.cell; tileField=fc; tileDpr=D;
+    const s=G.cell, T=s*2;
+    const t=document.createElement('canvas'); t.width=Math.round(T*D); t.height=Math.round(T*D); const c=t.getContext('2d');
+    if(!c){ fieldPattern=null; return; }
+    c.scale(D,D);
+    c.fillStyle=fc; c.fillRect(0,0,T,T);
+    const step=Math.max(2,Math.round(s/18));
+    const m=s*0.12, armLen=s*0.56;
+    const nLen=Math.floor(armLen/step), nW=1;
+    const dotSz=Math.max(1,Math.round(D))/D;
+    const TL=[0,0,1,1], TR=[s,0,-1,1], BL=[0,s,1,-1], BR=[s,s,-1,-1];
+    const cellTex=(ox,oy,corners,diag)=>{
+      c.save(); c.translate(ox,oy);
+      const dot=(x,y)=>{ if(x>=0&&x<s&&y>=0&&y<s) c.fillRect(Math.round(x*D)/D,Math.round(y*D)/D,dotSz,dotSz); };
+      c.fillStyle='rgba(46,34,52,0.30)';
+      for(const [cnx,cny,dx,dy] of corners){
+        const kx=cnx+dx*m, ky=cny+dy*m;
+        for(let a=0;a<=nLen;a++) for(let b=-nW;b<=nW;b++){ dot(kx+dx*a*step, ky+b*step); dot(kx+b*step, ky+dy*a*step); }
+        dot(kx-dx*step, ky-dy*step);
+      }
+      c.fillStyle='rgba(255,255,255,0.85)';
+      for(let t=0;t<s;t+=step){ dot(t,0); dot(0,t); }
+      for(let t=0;t<s;t+=step){ dot(t, diag==='main'?t:s-t); }
+      c.restore();
+    };
+    const evenC=[TL,BR], oddC=[TR,BL];
+    cellTex(0,0,evenC,'anti'); cellTex(s,0,oddC,'main');
+    cellTex(0,s,oddC,'main');  cellTex(s,s,evenC,'anti');
+    fieldPattern=ctx.createPattern(t,'repeat');
+    if(fieldPattern.setTransform){ fieldPattern.setTransform(new DOMMatrix([1/D,0,0,1/D,0,0])); }
+  }
+
+  /* ===================== element drawing (ported from blix.html) ===================== */
+  function drawBumper(gx, shape, perm, slotY, override){
+    const gy=Math.ceil(slotY/2), x=G.originX+(gx-1)*G.cell, y=G.originY+(gy-1)*G.cell, s=G.cell;
+    const corner=SHAPE_CORNER[shape]; let kx,ky,hx,vy;
+    if(corner==='tl'){kx=x;ky=y;hx=1;vy=1;}
+    else if(corner==='tr'){kx=x+s;ky=y;hx=-1;vy=1;}
+    else if(corner==='bl'){kx=x;ky=y+s;hx=1;vy=-1;}
+    else {kx=x+s;ky=y+s;hx=-1;vy=-1;}
+    const m=s*0.12, armLen=s*0.42;
+    const ax=kx+hx*m, ay=ky+vy*m;
+    const path=()=>{ ctx.beginPath(); ctx.moveTo(ax+hx*armLen, ay); ctx.lineTo(ax,ay); ctx.lineTo(ax, ay+vy*armLen); };
+    ctx.save(); ctx.lineCap='square'; ctx.lineJoin='miter';
+    ctx.strokeStyle=COL.blueEdge; ctx.lineWidth=Math.max(4,s*0.28); path(); ctx.stroke();
+    ctx.strokeStyle=override||(perm?COL.bumpDev:COL.bumpPlayer); ctx.lineWidth=Math.max(2,s*0.18); path(); ctx.stroke();
+    ctx.restore();
+  }
+  function drawCup(c){
+    const x=G.originX+(c.gx-1)*G.cell, y=G.originY+(c.gy-1)*G.cell, s=G.cell, cx=x+s/2, cy=y+s/2;
+    const lw=Math.max(2,s*0.05), m=lw/2, wt=s*0.24, OL=x+m,OR=x+s-m,OT=y+m,OB=y+s-m;
+    const pts=[[OL,OT],[OL,OB],[OR,OB],[OR,OT],[OR-wt,OT],[OR-wt,OB-wt],[OL+wt,OB-wt],[OL+wt,OT]];
+    const trace=()=>{ ctx.beginPath(); pts.forEach((q,i)=> i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1])); ctx.closePath(); };
+    const dark=COL.blue, light=mixW(COL.blue,0.58), edge=COL.blueEdge;
+    const rot={1:0,2:1,3:2,4:3}[c.face]||0;
+    const rotating=c.beh===1||c.beh===2;
+    const lx=c.beh===2?OL:OR-wt;
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot*Math.PI/2); ctx.translate(-cx,-cy);
+    ctx.lineJoin='miter'; ctx.lineCap='square';
+    ctx.fillStyle=dark; trace(); ctx.fill();
+    if(rotating){ ctx.fillStyle=light; ctx.fillRect(lx,OT,wt,OB-OT); }
+    ctx.strokeStyle=edge; ctx.lineWidth=lw; trace(); ctx.stroke();
+    ctx.restore();
+  }
+  function drawBlock(gx,gy,br){
+    const x=G.originX+(gx-1)*G.cell, y=G.originY+(gy-1)*G.cell, s=G.cell, pad=Math.max(1,s*0.06);
+    ctx.save(); ctx.fillStyle=COL.blueEdge; ctx.fillRect(x+pad,y+pad,s-2*pad,s-2*pad);
+    ctx.fillStyle=COL.blue; ctx.fillRect(x+pad+2,y+pad+2,s-2*pad-4,s-2*pad-4);
+    if(br){ ctx.strokeStyle=COL.blueEdge; ctx.lineWidth=2; ctx.beginPath();
+      ctx.moveTo(x+pad+3,y+s/2); ctx.lineTo(x+s-pad-3,y+s/2); ctx.stroke(); }
+    ctx.restore();
+  }
+  function drawItem(it){
+    const x=G.originX+(it.gx-1)*G.cell, y=G.originY+(it.gy-1)*G.cell, s=G.cell, cx=x+s/2, cy=y+s/2, sz=s*0.62, h=sz/2;
+    const glyph={stik:'S',tele:'◈',invs:'?',redi:'⟳',spdu:'»',spdd:'«'}[it.it]||'•';
+    const tint={stik:'#e6b53a',tele:'#3a9bd0',invs:'#8a6bd0',redi:'#d05a9a',spdu:'#3fae53',spdd:'#d0743a'}[it.it]||COL.blue;
+    ctx.save(); ctx.fillStyle=COL.blueEdge; ctx.fillRect(cx-h-1,cy-h-1,sz+2,sz+2);
+    ctx.fillStyle=tint; ctx.fillRect(cx-h,cy-h,sz,sz);
+    ctx.fillStyle='#10243a'; ctx.font='700 '+Math.round(s*0.4)+'px -apple-system,Segoe UI,Roboto';
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(glyph,cx,cy+s*0.02); ctx.restore();
+  }
+  function drawBall(b){
+    let px=SCx(b.x), py=SCy(b.y), sz=Math.round(G.cell*0.42);
+    const h=sz/2; ctx.save();
+    ctx.fillStyle=COL.blueEdge; ctx.fillRect(px-h-1,py-h-1,sz+2,sz+2);
+    ctx.fillStyle=b.col; ctx.fillRect(px-h,py-h,sz,sz);
+    ctx.restore();
+  }
+  // editor-only overlay: a white arrow + speed digit so direction/speed are visible at a glance
+  function drawBallDir(gx,gy,dir,spd){
+    const cx=SCx((gx-1)*U+12), cy=SCy((gy-1)*U+12), s=G.cell, a=s*0.18;
+    const v={u:[0,-1],d:[0,1],l:[-1,0],r:[1,0]}[dir]||[1,0];
+    const px=v[0], py=v[1], nx=-py, ny=px;                       // along + perpendicular
+    const tipx=cx+px*a*1.6, tipy=cy+py*a*1.6;
+    ctx.save(); ctx.fillStyle='#fff';
+    ctx.beginPath();
+    ctx.moveTo(tipx,tipy);
+    ctx.lineTo(cx-px*a*0.3+nx*a, cy-py*a*0.3+ny*a);
+    ctx.lineTo(cx-px*a*0.3-nx*a, cy-py*a*0.3-ny*a);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#06210d'; ctx.font='700 '+Math.round(s*0.3)+'px ui-monospace,Menlo,monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fillText(String(spd), cx-px*s*0.34, cy-py*s*0.34);
+    ctx.restore();
+  }
+
+  /* ===================== editor model ===================== */
+  // grid[key] = {k:'ball',dir,spd} | {k:'cup',face,beh} | {k:'block',br} | {k:'item',it}
+  //           | {k:'bump', top:{shape,perm}|null, bot:{shape,perm}|null}
+  let grid={};
+  const key=(gx,gy)=>gx+','+gy;
+
+  function render(){
+    buildFieldTile();
+    ctx.clearRect(0,0,cvW,cvH);
+    const bx=G.originX, by=G.originY, bw=G.cell*COLS, bh=G.cell*ROWS;
+    const fc=fieldCol(), frame=mixW(fc,0.6), outer=mixW(fc,0.2);
+    ctx.save(); ctx.fillStyle=outer; rrect(bx-14,by-14,bw+28,bh+28,12); ctx.fill();
+    ctx.fillStyle=frame; rrect(bx-8,by-8,bw+16,bh+16,8); ctx.fill(); ctx.restore();
+    ctx.save(); rrect(bx,by,bw,bh,3); ctx.clip();
+    ctx.fillStyle=fc; ctx.fillRect(bx,by,bw,bh);
+    if(fieldPattern){ ctx.save(); ctx.translate(bx,by); ctx.fillStyle=fieldPattern; ctx.fillRect(0,0,bw,bh); ctx.restore(); }
+    ctx.restore();
+    // elements
+    for(const k in grid){
+      const [gx,gy]=k.split(',').map(Number), o=grid[k];
+      if(o.k==='cup') drawCup({gx,gy,face:faceNum(o.face),beh:o.beh});
+      else if(o.k==='block') drawBlock(gx,gy,o.br===1);
+      else if(o.k==='item') drawItem({gx,gy,it:o.it});
+      else if(o.k==='ball'){ drawBall({x:(gx-1)*U+12,y:(gy-1)*U+12,col:BALLCOL[ballIndex(gx,gy)%BALLCOL.length],st:'move'}); drawBallDir(gx,gy,o.dir,o.spd); }
+      else if(o.k==='bump'){ if(o.top) drawBumper(gx,o.top.shape,o.top.perm,2*gy-1); if(o.bot) drawBumper(gx,o.bot.shape,o.bot.perm,2*gy); }
+    }
+    if(wMode===1) drawWrapEdges();          // astro/wrap: show the edges wrap to the opposite side
+    // hover highlight + tool preview
+    if(G.hover){
+      const [gx,gy]=G.hover, x=G.originX+(gx-1)*G.cell, y=G.originY+(gy-1)*G.cell, c=grid[key(gx,gy)];
+      ctx.save();
+      if(cur.tool==='bumper' && G.hoverPx){ ctx.globalAlpha=0.5; const b=shapeAt(gx,gy,G.hoverPx.px,G.hoverPx.py); drawBumper(gx,b.shape,cur.perm===1,b.slotY); ctx.globalAlpha=1; }
+      if(cur.tool==='erase' && G.hoverPx){ const s=eraseSlot(c,gx,gy,G.hoverPx.px,G.hoverPx.py);   // show which bumper corner will be removed
+        if(s){ const bp=c[s]; drawBumper(gx,bp.shape,bp.perm,s==='top'?2*gy-1:2*gy,COL.danger); } }
+      ctx.strokeStyle=cur.tool==='erase'?COL.danger:'#ffffff'; ctx.lineWidth=2;
+      ctx.strokeRect(x+1,y+1,G.cell-2,G.cell-2);
+      ctx.restore();
+    }
+  }
+  const faceNum=f=>({u:1,r:2,d:3,l:4}[f]||1);
+  function ballIndex(gx,gy){ // stable-ish color index by placement scan order
+    let i=0; for(const k in grid){ if(grid[k].k==='ball'){ if(k===key(gx,gy)) return i; i++; } } return 0;
+  }
+  // Astro/wrap indicator: cyan dashed border + an inward chevron on each edge (a ball leaving one edge
+  // re-enters from the opposite one). Purely cosmetic — the wrap itself lives in blix.html's wrapEdge.
+  function drawWrapEdges(){
+    const bx=G.originX, by=G.originY, bw=G.cell*COLS, bh=G.cell*ROWS, s=G.cell, cyan='#2fd4d4';
+    ctx.save();
+    ctx.strokeStyle=cyan; ctx.lineWidth=Math.max(2.5,s*0.09); ctx.setLineDash([s*0.42,s*0.3]);
+    const o=ctx.lineWidth/2+1; ctx.strokeRect(bx+o,by+o,bw-2*o,bh-2*o); ctx.setLineDash([]);
+    ctx.fillStyle=cyan;
+    const t=s*0.3, mx=bx+bw/2, my=by+bh/2;
+    const chev=(cx,cy,dx,dy)=>{ ctx.beginPath(); ctx.moveTo(cx+dx*t,cy+dy*t);
+      ctx.lineTo(cx-dx*t*0.6+dy*t*0.7, cy-dy*t*0.6+dx*t*0.7);
+      ctx.lineTo(cx-dx*t*0.6-dy*t*0.7, cy-dy*t*0.6-dx*t*0.7); ctx.closePath(); ctx.fill(); };
+    chev(mx, by+t*0.9, 0, 1); chev(mx, by+bh-t*0.9, 0,-1);      // top / bottom point inward
+    chev(bx+t*0.9, my, 1, 0); chev(bx+bw-t*0.9, my,-1, 0);      // left / right point inward
+    ctx.restore();
+  }
+
+  /* ===================== current tool state ===================== */
+  const cur={ tool:'ball', dir:'u', spd:1, face:'u', beh:0, br:0, it:'stik', perm:1 };
+
+  /* ===================== placement ===================== */
+  // BLiX diagonal-placement rule (ported from blix.html hoverShape): every square allows ONLY the two
+  // corners on its diagonal — the dotted brackets in the field show which. Cell parity picks the pair,
+  // and which triangle you click picks the top corner (LT/RT) or the bottom corner (LB/RB).
+  function shapeAt(gx,gy,px,py){
+    const c=gx-1, r=gy-1;
+    const fx=(px-G.originX)/(G.cell/U), fy=(py-G.originY)/(G.cell/U);
+    const sx=((fx%U)+U)%U, sy=((fy%U)+U)%U;
+    let shape,tag;
+    if(c%2===r%2){ if(sy>U-sx){shape='RB';tag='bot';} else {shape='LT';tag='top';} }
+    else { if(sy>sx){shape='LB';tag='bot';} else {shape='RT';tag='top';} }
+    return { shape, slotY: tag==='top'?2*gy-1:2*gy };
+  }
+  function place(gx,gy){
+    const k=key(gx,gy);
+    if(cur.tool==='erase'){ delete grid[k]; return; }
+    if(cur.tool==='ball'){ grid[k]={k:'ball',dir:cur.dir,spd:cur.spd}; return; }
+    if(cur.tool==='cup'){ grid[k]={k:'cup',face:cur.face,beh:cur.beh}; return; }
+    if(cur.tool==='block'){ grid[k]={k:'block',br:cur.br}; return; }
+    if(cur.tool==='item'){ grid[k]={k:'item',it:cur.it}; return; }
+    // bumpers are placed via paint() (needs the click position) — see shapeAt
+  }
+  // place a bumper at the diagonal corner nearest the click. The checkerboard guarantees a cell's two
+  // legal corners never collide in the encoding (even cell: LT top + RB bottom; odd: RT top + LB bottom).
+  function placeBumper(gx,gy,px,py){
+    const k=key(gx,gy), b=shapeAt(gx,gy,px,py);
+    const cell=(grid[k]&&grid[k].k==='bump')?grid[k]:{k:'bump',top:null,bot:null};
+    const perm=cur.perm===1;
+    if(b.slotY===2*gy-1) cell.top={shape:b.shape,perm}; else cell.bot={shape:b.shape,perm};
+    grid[k]=cell;
+  }
+  // which half-slot a bump cell will erase: the corner under the cursor, or the lone bumper if that slot is empty
+  function eraseSlot(c,gx,gy,px,py){
+    if(!c || c.k!=='bump') return null;
+    const top=shapeAt(gx,gy,px,py).slotY===2*gy-1;
+    if(top && c.top) return 'top';
+    if(!top && c.bot) return 'bot';
+    if(c.top) return 'top';
+    if(c.bot) return 'bot';
+    return null;
+  }
+  function eraseAt(gx,gy,px,py){
+    const k=key(gx,gy), c=grid[k]; if(!c) return;
+    if(c.k!=='bump'){ delete grid[k]; return; }     // balls/cups/blocks/items fill the whole square
+    const s=eraseSlot(c,gx,gy,px,py);               // bumpers: remove only the hovered corner
+    if(s==='top') c.top=null; else if(s==='bot') c.bot=null;
+    if(!c.top && !c.bot) delete grid[k];            // last bumper gone → drop the empty cell
+  }
+
+  /* ===================== serialize ===================== */
+  function bumpCode(o){
+    const ch=['.','.','.','.'];
+    if(o.top){ if(o.top.shape==='LT'){ch[0]='x';ch[1]=o.top.perm?'0':'1';} else {ch[2]='w';ch[3]=o.top.perm?'0':'1';} }
+    if(o.bot){ if(o.bot.shape==='LB'){ch[0]='z';ch[1]=o.bot.perm?'0':'1';} else {ch[2]='y';ch[3]=o.bot.perm?'0':'1';} }
+    return ch.join('');
+  }
+  function buildLevel(){
+    const o=[];
+    for(let gy=1;gy<=ROWS;gy++) for(let gx=1;gx<=COLS;gx++){
+      const c=grid[key(gx,gy)]; if(!c) continue;
+      let code=null;
+      if(c.k==='ball') code='ba'+c.dir+c.spd;
+      else if(c.k==='cup') code='cp'+c.face+c.beh;
+      else if(c.k==='block') code='blk'+c.br;
+      else if(c.k==='item') code=c.it;
+      else if(c.k==='bump') code=bumpCode(c);
+      if(code) o.push([gx,gy,code]);
+    }
+    const lv={ t:Math.max(1,parseInt(tEl.value,10)||125), w:wMode, o };
+    const pw=pwEl.value.trim(); if(pw) lv.pw=pw;
+    return lv;
+  }
+  function syncJSON(){ jsonEl.value=JSON.stringify(buildLevel()); updateStats(); }
+
+  /* ===================== deserialize / import ===================== */
+  function decodeInto(g, gx, gy, code){
+    const c=code;
+    if(c.slice(0,2)==='ba'){ const dir={u:'u',d:'d',l:'l',r:'r'}[c[2]]||'r', sp=parseInt(c[3])||2; g[key(gx,gy)]={k:'ball',dir,spd:sp}; return; }
+    if(c.slice(0,2)==='cp'){ const face={u:'u',r:'r',d:'d',l:'l'}[c[2]]||'u', beh=parseInt(c[3])||0; g[key(gx,gy)]={k:'cup',face,beh}; return; }
+    if(c.slice(0,3)==='blk'){ g[key(gx,gy)]={k:'block',br:(parseInt(c[3])||0)===1?1:0}; return; }
+    if(ITEMS.includes(c)){ g[key(gx,gy)]={k:'item',it:c}; return; }
+    // bumpers
+    let cell={k:'bump',top:null,bot:null};
+    if(c[0]==='x') cell.top={shape:'LT',perm:(c[1]==='0')};
+    else if(c[0]==='z') cell.bot={shape:'LB',perm:(c[1]==='0')};
+    if(c[2]==='w') cell.top={shape:'RT',perm:(c[3]==='0')};
+    else if(c[2]==='y') cell.bot={shape:'RB',perm:(c[3]==='0')};
+    if(cell.top||cell.bot) g[key(gx,gy)]=cell;
+  }
+  function loadLevel(lv){
+    const g={};
+    const arr=Array.isArray(lv)?lv:(lv&&lv.o);
+    if(!Array.isArray(arr)) throw new Error('no objects array');
+    for(const [gx,gy,code] of arr){ if(gx>=1&&gx<=COLS&&gy>=1&&gy<=ROWS) decodeInto(g,gx,gy,String(code)); }
+    grid=g;
+    if(!Array.isArray(lv)){
+      if(lv.t!=null) tEl.value=lv.t;
+      setW(lv.w?1:0);
+      pwEl.value=lv.pw||'';
+    }
+    render(); syncJSON();
+  }
+
+  /* ===================== stats / validation ===================== */
+  function updateStats(){
+    let balls=0,cups=0,bumps=0;
+    for(const k in grid){ const o=grid[k]; if(o.k==='ball')balls++; else if(o.k==='cup')cups++; else if(o.k==='bump') bumps+=(o.top?1:0)+(o.bot?1:0); }
+    statsEl.innerHTML=`<span><b>${balls}</b> balls</span><span><b>${cups}</b> cups</span><span><b>${bumps}</b> bumpers</span>`;
+    const warns=[];
+    if(balls===0) warns.push('no balls — add at least one');
+    if(cups===0) warns.push('no cups — balls have nowhere to score');
+    hintEl.innerHTML = warns.length ? '<span class="warn">⚠ '+warns.join(' · ')+'</span>'
+                                    : 'Pick a tool, then click the board. Right-click to erase.';
+  }
+
+  /* ===================== DOM wiring ===================== */
+  const tEl=document.getElementById('t'), pwEl=document.getElementById('pw'),
+        jsonEl=document.getElementById('json'), statsEl=document.getElementById('stats'),
+        hintEl=document.getElementById('hint'), tintEl=document.getElementById('tint');
+  let wMode=0;
+  function setW(v){ wMode=v; document.querySelectorAll('.p-w').forEach(b=>b.classList.toggle('sel',+b.dataset.w===v)); }
+
+  // tool buttons
+  document.querySelectorAll('.tool').forEach(b=>b.addEventListener('click',()=>{
+    cur.tool=b.dataset.tool;
+    document.querySelectorAll('.tool').forEach(x=>x.classList.toggle('sel',x===b));
+    document.querySelectorAll('.paramrow').forEach(p=>p.classList.toggle('on',p.dataset.for===cur.tool));
+    render();
+  }));
+  // generic param segment wiring: [selector, state key, parse]
+  const seg=(cls,k,parse)=>document.querySelectorAll(cls).forEach(b=>b.addEventListener('click',()=>{
+    cur[k]=parse(b.dataset[k==='it'?'it':Object.keys(b.dataset)[0]]);
+    b.parentElement.querySelectorAll(cls).forEach(x=>x.classList.toggle('sel',x===b)); render();
+  }));
+  seg('.p-dir','dir',v=>v); seg('.p-spd','spd',v=>+v);
+  seg('.p-face','face',v=>v); seg('.p-beh','beh',v=>+v);
+  seg('.p-br','br',v=>+v); seg('.p-it','it',v=>v);
+  seg('.p-perm','perm',v=>+v);
+
+  document.querySelectorAll('.p-w').forEach(b=>b.addEventListener('click',()=>{ setW(+b.dataset.w); syncJSON(); render(); }));
+  tEl.addEventListener('input',syncJSON); pwEl.addEventListener('input',syncJSON);
+  tintEl.addEventListener('change',()=>{ G.level=+tintEl.value; fieldPattern=null; tileCell=0; render(); });
+
+  /* ===================== canvas interaction ===================== */
+  function evtPos(e){
+    const rect=cv.getBoundingClientRect(), sx=cvW/rect.width, sy=cvH/rect.height;
+    return { px:(e.clientX-rect.left)*sx, py:(e.clientY-rect.top)*sy };
+  }
+  function paint(cell,p,erase){
+    const [gx,gy]=cell;
+    if(erase){ eraseAt(gx,gy,p.px,p.py); return; }                    // erase only the hovered bumper corner
+    if(cur.tool==='bumper'){ placeBumper(gx,gy,p.px,p.py); return; }   // corner derives from click position
+    place(gx,gy);
+  }
+  let painting=false;
+  cv.addEventListener('contextmenu',e=>e.preventDefault());
+  cv.addEventListener('pointerdown',e=>{
+    const p=evtPos(e), cell=pickCell(p.px,p.py); if(!cell) return;
+    e.preventDefault(); cv.setPointerCapture(e.pointerId);
+    const erase = e.button===2 || cur.tool==='erase';
+    paint(cell,p,erase); painting={erase};
+    render(); syncJSON();
+  });
+  cv.addEventListener('pointermove',e=>{
+    const p=evtPos(e), cell=pickCell(p.px,p.py); G.hover=cell; G.hoverPx=p;
+    if(cell && painting && (painting.erase || cur.tool==='block' || cur.tool==='bumper')){
+      paint(cell,p,painting.erase); syncJSON();         // drag-paint blocks / bumpers / erase
+    }
+    render();
+  });
+  const stop=()=>{ painting=false; };
+  cv.addEventListener('pointerup',stop); cv.addEventListener('pointercancel',stop);
+  cv.addEventListener('pointerleave',()=>{ G.hover=null; G.hoverPx=null; render(); });
+
+  /* ===================== keyboard shortcuts ===================== */
+  window.addEventListener('keydown',e=>{
+    if(!playOv.hidden){ if(e.key==='Escape') closePlay(); return; }   // overlay open: only Esc closes it
+    if(/input|textarea|select/i.test(e.target.tagName)) return;
+    const map={b:'ball',c:'cup',k:'block',i:'item',m:'bumper',e:'erase'};
+    const tk=map[e.key.toLowerCase()];
+    if(tk){ document.querySelector(`.tool[data-tool="${tk}"]`).click(); return; }
+    const arrow={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r'}[e.key];
+    if(arrow){ e.preventDefault();
+      if(cur.tool==='ball'){ cur.dir=arrow; document.querySelectorAll('.p-dir').forEach(x=>x.classList.toggle('sel',x.dataset.dir===arrow)); }
+      else if(cur.tool==='cup'){ cur.face=arrow; document.querySelectorAll('.p-face').forEach(x=>x.classList.toggle('sel',x.dataset.face===arrow)); }
+      render();
+    }
+  });
+
+  /* ===================== buttons: test / copy / import / clear / templates ===================== */
+  // ---- embedded play-test: run index.html (the BLiX game) in an iframe, fed via the same #test= hook ----
+  const playOv=document.getElementById('player'), playFrame=document.getElementById('playFrame');
+  let playNonce=0, lastPayload=null;
+  function frameUrl(payload){ return 'index.html?p='+(++playNonce)+'#test='+payload; }  // query nonce forces a real reload (hash-only changes don't)
+  function launchPlay(){
+    const lv=buildLevel();
+    if(!lv.o.length){ flash('Add some pieces first.'); return; }
+    lastPayload=btoa(encodeURIComponent(JSON.stringify(lv)));
+    playFrame.src=frameUrl(lastPayload);
+    playOv.hidden=false;
+    playFrame.focus();
+  }
+  function closePlay(){ playOv.hidden=true; playFrame.src='about:blank'; }  // blank it to stop the game + sound
+  document.getElementById('test').addEventListener('click',launchPlay);
+  document.getElementById('playClose').addEventListener('click',closePlay);
+  document.getElementById('playReload').addEventListener('click',()=>{ if(lastPayload!=null){ playFrame.src=frameUrl(lastPayload); playFrame.focus(); } });
+  document.getElementById('playPop').addEventListener('click',()=>{ if(lastPayload!=null) window.open('index.html#test='+lastPayload,'_blank'); });
+  playOv.addEventListener('click',e=>{ if(e.target===playOv) closePlay(); });   // click the backdrop to close
+  document.getElementById('copy').addEventListener('click',async()=>{
+    syncJSON();
+    try{ await navigator.clipboard.writeText(jsonEl.value); flash('Copied level JSON ✓'); }
+    catch(_){ jsonEl.select(); document.execCommand&&document.execCommand('copy'); flash('Copied (fallback) ✓'); }
+  });
+  document.getElementById('import').addEventListener('click',()=>{
+    try{ loadLevel(JSON.parse(jsonEl.value)); flash('Imported ✓'); }
+    catch(err){ flash('Import failed: '+err.message); }
+  });
+  document.getElementById('clear').addEventListener('click',()=>{ grid={}; render(); syncJSON(); });
+  document.getElementById('tpl').addEventListener('change',e=>{
+    const t=TEMPLATES[e.target.value]; e.target.value='';
+    if(t){ tEl.value=125; setW(0); pwEl.value=''; loadLevel(t); }
+  });
+  function flash(msg){ hintEl.textContent=msg; setTimeout(updateStats,1600); }
+
+  const TEMPLATES={
+    basic:{t:125,w:0,o:[[2,7,'bar1'],[12,7,'cpl0']]},
+    bounce:{t:125,w:0,o:[[2,2,'bad2'],[2,12,'z0..'],[12,12,'cpl0']]},
+    rain:{t:150,w:0,o:[[7,7,'cpu0'],[3,1,'bad2'],[7,1,'bad2'],[11,1,'bad2']]},
+  };
+
+  /* ===================== boot ===================== */
+  window.addEventListener('resize',layout);
+  layout();
+  loadLevel(TEMPLATES.basic);
+})();
+</script>
+</body>
+</html>
