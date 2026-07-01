@@ -612,7 +612,7 @@
     let ready=false,starting=false,master,blip,arp,poly,buzz,sp,lastB=0,clk=0;
     async function init(){ if(ready||starting||!window.Tone) return; starting=true;
       try{ await Tone.start(); master=new Tone.Volume(-8).toDestination();
-        blip=new Tone.MembraneSynth({pitchDecay:0.012,octaves:3,envelope:{attack:0.001,decay:0.12,sustain:0}}).connect(master);
+        blip=new Tone.PolySynth(Tone.MembraneSynth,{pitchDecay:0.012,octaves:3,envelope:{attack:0.001,decay:0.12,sustain:0}}).connect(master);
         arp=new Tone.Synth({oscillator:{type:'triangle'},envelope:{attack:0.002,decay:0.16,sustain:0,release:0.05}}).connect(master);
         poly=new Tone.PolySynth(Tone.Synth).connect(new Tone.Volume(-6).connect(master));
         buzz=new Tone.Synth({oscillator:{type:'sawtooth'},envelope:{attack:0.005,decay:0.4,sustain:0.1,release:0.2}}).connect(new Tone.Volume(-8).connect(master));
