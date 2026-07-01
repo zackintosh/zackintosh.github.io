@@ -609,7 +609,7 @@
 
   /* ============================ Audio ============================ */
   const Sound=(function(){
-    let ready=false,starting=false,master,blip,arp,poly,buzz,sp,lastB=0;
+    let ready=false,starting=false,master,blip,arp,poly,buzz,sp,lastB=0,clk=0;
     async function init(){ if(ready||starting||!window.Tone) return; starting=true;
       try{ await Tone.start(); master=new Tone.Volume(-8).toDestination();
         blip=new Tone.MembraneSynth({pitchDecay:0.012,octaves:3,envelope:{attack:0.001,decay:0.12,sustain:0}}).connect(master);
@@ -619,15 +619,21 @@
         sp=new Tone.Synth({oscillator:{type:'square'},envelope:{attack:0.001,decay:0.1,sustain:0}}).connect(new Tone.Volume(-12).connect(master));
         ready=true;
       }catch(e){ starting=false; } }
-    const on=()=>ready&&G.sound, T=()=>window.Tone?Tone.now():0;
+    const on=()=>ready&&G.sound;
+    // Tone's monophonic synths throw "start time must be strictly greater than previous"
+    // if two notes on the same synth share a start time (e.g. place() + bounce() on `blip`
+    // in the same instant). Hand out strictly-increasing times, and wrap every trigger so an
+    // audio hiccup can NEVER unwind into frame() and kill the requestAnimationFrame loop.
+    function at(span){ let t=window.Tone?Tone.now():0; if(t<=clk) t=clk+0.002; clk=t+(span||0); return t; }
+    function safe(fn){ try{ fn(); }catch(e){} }
     return { init,
-      bounce(){ if(!on())return; const n=performance.now(); if(n-lastB<26)return; lastB=n; blip.triggerAttackRelease('C4','32n'); },
-      score(){ if(!on())return; const t=T(); ['C5','E5','G5'].forEach((x,i)=>arp.triggerAttackRelease(x,'16n',t+i*0.05)); },
-      win(){ if(!on())return; poly.triggerAttackRelease(['C4','E4','G4','C5'],'2n'); },
-      lose(){ if(!on())return; const t=T(); buzz.triggerAttackRelease('G3','4n',t); buzz.triggerAttackRelease('C3','2n',t+0.12); },
-      special(){ if(!on())return; sp.triggerAttackRelease('A4','32n'); },
-      place(){ if(!on())return; blip.triggerAttackRelease('E3','32n'); },
-      remove(){ if(!on())return; blip.triggerAttackRelease('A2','32n'); } };
+      bounce(){ if(!on())return; const n=performance.now(); if(n-lastB<26)return; lastB=n; safe(()=>blip.triggerAttackRelease('C4','32n',at())); },
+      score(){ if(!on())return; safe(()=>{ const t=at(0.2); ['C5','E5','G5'].forEach((x,i)=>arp.triggerAttackRelease(x,'16n',t+i*0.05)); }); },
+      win(){ if(!on())return; safe(()=>poly.triggerAttackRelease(['C4','E4','G4','C5'],'2n',at(0.1))); },
+      lose(){ if(!on())return; safe(()=>{ const t=at(0.4); buzz.triggerAttackRelease('G3','4n',t); buzz.triggerAttackRelease('C3','2n',t+0.12); }); },
+      special(){ if(!on())return; safe(()=>sp.triggerAttackRelease('A4','32n',at())); },
+      place(){ if(!on())return; safe(()=>blip.triggerAttackRelease('E3','32n',at())); },
+      remove(){ if(!on())return; safe(()=>blip.triggerAttackRelease('A2','32n',at())); } };
   })();
 
   /* ============================ UI / overlays ============================ */
@@ -729,13 +735,15 @@
   /* ============================ Main loop ============================ */
   let lastNow=performance.now(), acc=0;
   function frame(){
-    NOW=performance.now(); let dt=NOW-lastNow; lastNow=NOW; if(dt>200)dt=200; acc+=dt;
-    while(acc>=FRAME_MS){ tickFrame(); acc-=FRAME_MS; if(G.state!=='playing') { acc=0; break; } }
-    if(G.bonus) tickBonus(dt);                  // count leftover time into the score after a clear
-    resize(); drawFrame();
-    // keep the status clock ticking while playing
-    if(G.state==='playing'){ const [txt,col]=statusText(); statusEl.textContent=txt; statusEl.style.color=col||'#e8ecf5'; }
-    requestAnimationFrame(frame);
+    try{
+      NOW=performance.now(); let dt=NOW-lastNow; lastNow=NOW; if(dt>200)dt=200; acc+=dt;
+      while(acc>=FRAME_MS){ tickFrame(); acc-=FRAME_MS; if(G.state!=='playing') { acc=0; break; } }
+      if(G.bonus) tickBonus(dt);                  // count leftover time into the score after a clear
+      resize(); drawFrame();
+      // keep the status clock ticking while playing
+      if(G.state==='playing'){ const [txt,col]=statusText(); statusEl.textContent=txt; statusEl.style.color=col||'#e8ecf5'; }
+    }catch(e){ if(window.console&&console.error) console.error('BLiX frame error (recovered, loop continues):', e); }
+    requestAnimationFrame(frame);                 // ALWAYS reschedule — one bad frame must never freeze the game
   }
   (function boot(){
     try{ const m=parseInt(localStorage.getItem('blix.max')||'0',10); if(!isNaN(m)) G.maxLevel=m;
